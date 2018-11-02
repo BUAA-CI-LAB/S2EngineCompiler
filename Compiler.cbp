@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Compiler" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/Compiler" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/Compiler" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+		</Compiler>
+		<Unit filename="include/Analyze.hpp" />
+		<Unit filename="include/DFUSim.hpp" />
+		<Unit filename="include/FIFO.hpp" />
+		<Unit filename="include/Interface.hpp" />
+		<Unit filename="include/Memory.hpp" />
+		<Unit filename="include/MyMath.hpp" />
+		<Unit filename="include/NetDataType.hpp" />
+		<Unit filename="include/RUArraySim.hpp" />
+		<Unit filename="include/SysDataType.hpp" />
+		<Unit filename="include/SysSim.hpp" />
+		<Unit filename="include/compiler.hpp" />
+		<Unit filename="include/hwinfo.hpp" />
+		<Unit filename="include/net.hpp" />
+		<Unit filename="src/Analyze.cpp" />
+		<Unit filename="src/Memory.cpp" />
+		<Unit filename="src/RUArraySim.cpp" />
+		<Unit filename="src/SysSim.cpp" />
+		<Unit filename="src/main.cpp" />
+		<Unit filename="src/net.cpp" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
