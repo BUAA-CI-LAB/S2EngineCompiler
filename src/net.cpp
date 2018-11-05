@@ -191,6 +191,22 @@ void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<SparseDataInFIFO
                     (y+h)<this->lH?
                     (y+h):this->lH-1;
         }
+        else if (nextLayer.padding==ZERO_PAD){
+            thisX = (x+w);
+            thisY = (y+h);
+            if (thisX < 0 || thisX >= this->lW
+             || thisY < 0 || thisY >= this->lH){
+                #ifdef REFORMED
+                xTrans.emplace_back(0,FEATURE_FILL_ZERO_POSITION,1);
+                #else
+                const int kB = k * GROUP_SIZE;
+                for (int i=0;i<GROUP_SIZE;i++)
+                    if(nextLayer.pattern[kG][it*GROUP_SIZE+i])
+                        xTrans.emplace_back(0);
+                #endif // REFORMED
+                continue;
+            }
+        }
         else
             assert(false);
 
@@ -207,9 +223,19 @@ void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<SparseDataInFIFO
     return;
 }
 
+#ifdef GENERATE_DATA
 void Layer::Compute(const Layer& lastLayer){
+#else
+bool Layer::Compute(const Layer& lastLayer){
+#endif // GENERATE_DATA
+    #ifdef GENERATE_DATA
     assert(!this->hasLoadFeature);
-    assert(this->padding == SAME_PAD);
+    #else
+    assert(this->hasLoadFeature);
+    assert(this->hasLoadBias);
+    #endif // GENERATE_DATA
+    assert(this->padding == SAME_PAD
+        || this->padding == ZERO_PAD);
     assert(this->kH%2==1&&this->kW%2==1);
     int halfW = this->kW/2,
         halfH = this->kH/2;
@@ -217,7 +243,12 @@ void Layer::Compute(const Layer& lastLayer){
     for (int k=0;k<this->kN;k++)
         for (int y=0;y<this->lH;y++)
             for (int x=0;x<this->lW;x++){
-                this->feature[k][y][x]=0;
+                XTransIn::FeatureType tempFeature;
+                #ifdef GENERATE_DATA
+                tempFeature = 0;
+                #else
+                tempFeature = this->bias[k];
+                #endif // GENERATE_DATA
                 for (int w=-halfW,kw=0;w<=halfW;w++,kw++){
                     for (int h=-halfH,kh=0;h<=halfH;h++,kh++){
                         int lastX = x * this->sW + w,
@@ -228,20 +259,44 @@ void Layer::Compute(const Layer& lastLayer){
                             lastY = lastY>=0?lastY:0;
                             lastY = lastY>=lastLayer.getLH()?lastLayer.getLH()-1:lastY;
                         }
+                        else if (this->padding == ZERO_PAD){
+                            if (lastX<0 || lastX>=lastLayer.getLW()
+                             || lastY<0 || lastY>=lastLayer.getLH())
+                                continue;
+                        }
                         else/// other padding style has not been exploited
                             assert(false);
 
                         lastLayer.AddInnerProduct(
                             lastX,lastY,this->kernel[k],
+                            #ifdef XUCHENG_PROTOCOL
                             (kw*this->kH+kh)*this->kD,this->kD,
-                            this->feature[k][y][x]
+                            #else
+                            (kw*this->kH+kh)*this->kD,this->kD,
+                            #endif // XUCHENG_PROTOCOL
+                            tempFeature
                         );
                         /// to calculate the accuracy output value
                     }
                 }
+                #ifdef GENERATE_DATA
+                this->feature[k][y][x] = tempFeature;
+                #else
+                if (this->feature[k][y][x] != tempFeature){
+                    std::cout<<"k:"<<k<<" y:"<<y<<" x:"<<x<<std::endl;
+                    std::cout<<"loaded feature:"<<this->feature[k][y][x]<<std::endl;
+                    std::cout<<"actual output :"<<tempFeature<<std::endl;
+                    return false;
+                }
+                this->feature[k][y][x] -= this->bias[k];
+                #endif // GENERATE_DATA
             }
+    #ifdef GENERATE_DATA
     this->hasLoadFeature = true;
     return;
+    #else
+    return true;
+    #endif
 }
 
 inline void Layer::AddInnerProduct(int x,int y,const Kernel& k,int kBegin,int kLen,XTransIn::FeatureType& parsum)const{
@@ -281,27 +336,92 @@ void Layer::PartitionFeature(){
     return;
 }
 
-void Layer::LoadKernel(const string& prefix){
-    assert(!this->hasLoadKernel);
-    const int kernelSize = this->kH * this->kW * this->kD;
+#ifndef GENERATE_DATA
+void Layer::LoadBias  (const string& prefix){
+    #ifndef XUCHENG_PROTOCOL
+    assert(false);/// wenzhi: unspecified input protocol
+    #endif // XUCHENG_PROTOCOL
+    assert(!this->hasLoadBias);
+    std::ifstream ifs(prefix + BIAS_FILE_PATH,std::ifstream::in);
 
-    std::ifstream ifs(prefix + KERNEL_FILE_PATH,std::ifstream::in
-                                              | std::ifstream::binary);
     if (!ifs){
-        std::cout<<"Open file error! [load kernel]"<<std::endl;
+        std::cout<<"Open file error! [load bias]"<<std::endl;
         return;
     }
-    for (auto& kit : this->kernel)
+
+    std::string tempS;
+    std::getline(ifs,tempS);
+
+    for (auto& bit : this->bias){
+        double tempFloat;
+        ifs>>tempFloat;
+        bit = (int64_t)tempFloat;
+    }
+    this->hasLoadBias = true;
+    return;
+}
+#endif // GENERATE_DATA
+
+#ifdef GENERATE_DATA
+void Layer::LoadKernel(const string& prefix){
+    assert(!this->hasLoadKernel);
+
+    const int kernelSize = this->kH * this->kW * this->kD;
+    std::ifstream ifs(prefix + KERNEL_FILE_PATH,std::ifstream::in);
+    if (!ifs){
+        std::cout<<"Open file error! [load kernel]:"<<prefix + KERNEL_FILE_PATH<<std::endl;
+        return;
+    }
+    for (int k=0;k<this->kN;k++){
         for (int i=0;i<kernelSize;i++){
             WTransIn::WeightType value;
             ifs >> value;
-            kit.AddValue(i,value);
+            this-> kernel[k].AddValue(i,(WTransIn::WeightType)value);
         }
-    this->hasLoadKernel = true;
+    }
+    this->hasLoadKernel  = true;
     ifs.close();
     return;
 }
+#else
+void Layer::LoadKernel(const string& prefix,int actD,int D){
+    assert(!this->hasLoadKernel
+        && !this->hasLoadPattern);
 
+    const int columNum = this->kH * this->kW;
+    std::ifstream ifs(prefix + KERNEL_FILE_PATH,std::ifstream::in);
+    if (!ifs){
+        std::cout<<"Open file error! [load kernel]:"<<prefix + KERNEL_FILE_PATH<<std::endl;
+        return;
+    }
+    #ifdef XUCHENG_PROTOCOL
+    std::string tempS;
+    std::getline(ifs,tempS);
+    #else
+    assert(false);///wenzhi: unspecified input protocol
+    #endif // XUCHENG_PROTOCOL
+    for (int k=0;k<this->kN;k++){
+        for (int c=0;c<columNum;c++){
+            for (int i=0;i<actD;i++){
+                float value;
+                ifs >> value;
+                this-> kernel[k].AddValue(c*D + i,(WTransIn::WeightType)value);
+                this->pattern[k][c*D + i] = (((WTransIn::WeightType)value)!=0);
+            }
+            for (int i=actD;i<D;i++){
+                this-> kernel[k].AddValue(c*D + i,0);
+                this->pattern[k][c*D + i] = false;
+            }
+        }
+    }
+    this->hasLoadKernel  = true;
+    this->hasLoadPattern = true;
+    ifs.close();
+    return;
+}
+#endif // GENERATE_DATA
+
+#ifdef GENERATE_DATA
 void Layer::LoadPattern(const string& prefix){
     assert(this->kN % KERNEL_GROUP_SIZE ==0
         &&!this->hasLoadPattern);
@@ -329,12 +449,14 @@ void Layer::LoadPattern(const string& prefix){
     ifs.close();
     return;
 }
+#endif // GENERATE_DATA
 
-void Layer::LoadFeature(const string& prefix){
+#ifdef GENERATE_DATA
+void Layer::LoadFeature(const string& prefix,const string& fileName){
     assert(!this->hasLoadFeature);
 
-    std::ifstream ifs(prefix + FEATURE_FILE_PATH,std::ifstream::in
-                                               | std::ifstream::binary);
+    std::ifstream ifs(prefix + fileName,std::ifstream::in);
+
     if (!ifs){
         std::cout<<"Open file error! [load feature]"<<std::endl;
         return;
@@ -350,6 +472,52 @@ void Layer::LoadFeature(const string& prefix){
     ifs.close();
     return;
 }
+#else
+void Layer::LoadFeature(const string& prefix,int actD,int D, const string& fileName){
+    assert(!this->hasLoadFeature);
+
+    std::ifstream ifs(prefix + fileName,std::ifstream::in);
+
+    if (!ifs){
+        std::cout<<"Open file error! [load feature]"<<std::endl;
+        return;
+    }
+    #ifdef XUCHENG_PROTOCOL
+    std::string tempS;
+    std::getline(ifs,tempS);
+    #else
+    assert(false);
+    #endif // XUCHENG_PROTOCOL
+    for (int k=0;k<actD;k++)
+        #ifdef XUCHENG_MISTAKE
+        for (int w=0;w<this->lW;w++)
+            for (int h=0;h<this->lH;h++){
+        #else
+        for (auto& hit : this->feature[k])
+            for (auto& wit : hit){
+        #endif // XUCHENG_MISTAKE
+                #ifdef XUCHENG_PROTOCOL
+                float tempFeature;
+                #else
+                XTransIn::FeatureType tempFeature;
+                #endif // XUCHENG_PROTOCOL
+                ifs>>tempFeature;
+                #ifdef XUCHENG_MISTAKE
+                this->feature[k][h][w] = (XTransIn::FeatureType)tempFeature;
+                #else
+                wit = (XTransIn::FeatureType)tempFeature;
+                #endif // XUCHENG_MISTAKE
+            }
+    for (int k=actD; k<D;k++)
+        for (auto& hit : this->feature[k])
+            for (auto& wit : hit)
+                wit = 0;
+    this->hasLoadFeature = true;
+    ifs.close();
+    return;
+}
+#endif // GENERATE_DATA
+
 bool Layer::CheckPattern(){
     assert(this->kN%KERNEL_GROUP_SIZE == 0);
     int kernelGroupNum = this->kN/KERNEL_GROUP_SIZE;

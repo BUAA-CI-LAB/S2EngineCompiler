@@ -19,10 +19,6 @@
 //#define PRINT_CHECK_XW_PROCESS
 //#define PRINT_MATH_PROCESS
 
-#define KERNEL_FILE_PATH  "./data/kernel.txt"
-#define PATTERN_FILE_PATH "./data/pattern.txt"
-#define FEATURE_FILE_PATH "./data/feature.txt"
-
 #define PE_FILE_PATH "pe.txt"
 #define PE_ACT_WORK_LOAD "PEActWorkLoad.txt"
 #define SA_XIN_FILE_PATH  "SA_XIn.txt"
@@ -83,11 +79,15 @@
 
 #define PRINT_PROCESS
 
-#define GENERATE_DATA
+//#define GENERATE_DATA
+
+#define XUCHENG_PROTOCOL
+
+#define XUCHENG_MISTAKE
 
 #define TRANS_DATA
 
-#define PRINT_TO_FILE
+//#define PRINT_TO_FILE
 
 //#define PRINT_DEBUG_INFO
 
@@ -100,5 +100,18 @@
 //#define GENERATE_CODE
 
 #define AVOID_OVERFLOW
+
+#ifdef GENERATE_DATA
+    #define  KERNEL_FILE_PATH "./data/kernel.txt"
+    #define PATTERN_FILE_PATH "./data/pattern.txt"
+    #define FEATURE_FILE_PATH "./data/feature.txt"
+#else
+    #ifdef XUCHENG_PROTOCOL
+        #define KERNEL_FILE_PATH "./weights"
+        #define     IF_FILE_PATH "./input_features"
+        #define     OF_FILE_PATH "./output_features"
+        #define   BIAS_FILE_PATH "./bias"
+    #endif // XUCHENG_PROTOCOL
+#endif // GENERATE_DATA
 
 #endif // COMPILER_HPP

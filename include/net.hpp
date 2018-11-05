@@ -66,6 +66,9 @@ public:
     inline int GetReorderedSize() const{
         return this->reordered.size();
     }
+    inline int GetInitialSize() const{
+        return this->initial.size();
+    }
 };
 
 class Layer{
@@ -79,6 +82,10 @@ private:
     const int sH,sW;
     int allGroupSize;
     Layer* preLayer;
+
+    #ifndef GENERATE_DATA
+    vector<int64_t> bias;
+    #endif // GENERATE_DATA
 
     vector<Kernel> kernel;
 
@@ -101,6 +108,9 @@ private:
      ** none-zero kernel in each group  **/
 
     bool hasLoadKernel,
+        #ifndef GENERATE_DATA
+         hasLoadBias,
+        #endif // GENERATE_DATA
          hasLoadFeature,
          hasLoadPattern,
          hasPartFeature,
@@ -147,13 +157,14 @@ private:
 public:
     Layer(int lH,int lW,int kN,
           int kH,int kW,int sH,int sW,int kD,
-          enum PAD_TYPE padding = SAME_PAD)
+          enum PAD_TYPE padding)
           : idx(Layer::idxCounter++),
             type(CONV_LAYER),
             padding(padding),
             lH(lH),lW(lW),
             kN(kN),kH(kH),kW(kW),kD(kD),
             sH(sH),sW(sW),
+                 bias( kN),
                kernel( kN,Kernel(kH * kW * kD)),
               pattern((kN + KERNEL_GROUP_SIZE -1)
                           / KERNEL_GROUP_SIZE,vector<bool>(kH * kW * kD)),
@@ -166,6 +177,9 @@ public:
         assert(kN%KERNEL_GROUP_SIZE==0);
 
         this->hasLoadKernel  = false;
+        #ifndef GENERATE_DATA
+        this->hasLoadBias    = false;
+        #endif // GENERATE_DATA
         this->hasLoadFeature = false;
         this->hasLoadPattern = false;
         this->hasPartFeature = false;
@@ -304,11 +318,30 @@ public:
         return this->feature[k][y][x];
     }
 
-    void LoadKernel (const string& prefix = "./");
-    void LoadPattern(const string& prefix = "./");
-    void LoadFeature(const string& prefix = "./");
+    #ifndef GENERATE_DATA
+    void LoadBias   (const string& prefix = "./");
+    #endif // GENERATE_DATA
 
+    #ifdef GENERATE_DATA
+    void LoadKernel (const string& prefix = "./");
+    #else
+    void LoadKernel (const string& prefix,int actD,int D);
+    #endif // GENERATE_DATA
+
+    void LoadPattern(const string& prefix = "./");
+
+    #ifdef GENERATE_DATA
+    void LoadFeature(const string& prefix, const string& fileName);
+    #else
+    void LoadFeature(const string& prefix, int actD,int D, const string& fileName);
+    #endif // GENERATE_DATA
+
+    #ifdef GENERATE_DATA
     void Compute(const Layer& lastLayer);
+    #else
+    bool Compute(const Layer& lastLayer);
+    #endif // GENERATE_DATA
+
     void GenReorderSeq();
     /** generate the sparse location
      ** of each group of kernels
@@ -400,14 +433,17 @@ private:
     const int d;
     const int actD;
 
+    const enum PAD_TYPE padding;
+
     const uint8_t featureSparse;
     const uint8_t  kernelSparse;
 
 public:
     LayerDimension(int h,int w,int d,
+                   enum PAD_TYPE padding = SAME_PAD,
                    uint8_t featureSparse = FEATURE_ZERO_PERCENT,
                    uint8_t  kernelSparse = KERNEL_SPARSE_RATE)
-        :h(h),w(w),d((d+GROUP_SIZE-1)/GROUP_SIZE),actD(d),
+        :h(h),w(w),d((d+GROUP_SIZE-1)/GROUP_SIZE),actD(d),padding(padding),
          featureSparse(featureSparse),
           kernelSparse( kernelSparse){
         assert(this->featureSparse>=0 && this->featureSparse<=100);
@@ -420,6 +456,11 @@ public:
     inline int GetActD() const{return this->actD;}
     inline int GetFS  () const{return this->featureSparse;}
     inline int GetKS  () const{return this-> kernelSparse;}
+
+    inline enum PAD_TYPE GetPadding() const{
+        return this->padding;
+    }
+
     inline string toString() const{
         return string("(")+std::to_string(this->h)
               +string(",")+std::to_string(this->w)

@@ -58,7 +58,14 @@ private:
 
     void analyze(const LayerDimension& lastLayerInfo,
                  const LayerDimension& thisLayerInfo,
-                 int kH,int kW,int sH=1,int sW=1,const string& prefix = "./");
+                 int kH,int kW,int sH=1,int sW=1,const string& prefix = "./"
+                 #ifndef GENERATE_DATA
+                 ,const string& weightFile = "weights"
+                 ,const string&   biasFile = "bias"
+                 ,const string&     ifFile = "input_features"
+                 ,const string&     ofFile = "output_features"
+                 #endif // GENERATE_DATA
+                );
 
     DFU dfus;
 
@@ -163,6 +170,10 @@ public:
         #endif // ANALYZE
         return;
     }
+
+    void AnalyzeRealAlexNet(std::string path);
+    void AnalyzeRealVGG16  (std::string path);
+    void AnalyzeRealVGG19  (std::string path);
 
     void AnalyzeAlexNet();
     void AnalyzeVGG16();

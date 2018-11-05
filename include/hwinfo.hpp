@@ -16,7 +16,7 @@
 #define    EOW_BIT_WIDTH 1
 #define RELATIVE_LOC_BIT_WIDTH 2
 
-//#define REFORMED
+#define REFORMED
 
 /** network related parameter **/
 /// if the systolic array support 16-bit

@@ -285,11 +285,10 @@ void RUArray::TransLIn(const Layer& layer){
 }
 
 void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<vector<DFIFO> >& SAXIn){
-    assert(thisLayer.getPadType()==SAME_PAD
-        &&(thisLayer.getKD()%GROUP_SIZE==0)
-        && thisLayer.getKW()%2==1
-        && thisLayer.getKH()%2==1
-        &&!this->hasGenXIn);
+    assert((thisLayer.getKD()%GROUP_SIZE==0)
+         && thisLayer.getKW()%2==1
+         && thisLayer.getKH()%2==1
+         &&!this->hasGenXIn);
 
     const int workLoad = SAXIn[0][0].GetWorkLoad();
     const int wHalf = (thisLayer.getKW()-1)/2,
@@ -353,22 +352,16 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                     }
                 }
                 if (!endOfZone){
-                    assert(thisLayer.getPadType()==SAME_PAD);
-
                     for (int w = thisW*thisLayer.getSW()-wHalf;
                              w<= thisW*thisLayer.getSW()+wHalf;w++){
-                        int lastW = /// the location of the  input activation
-                            (w<0)?0:
-                            (w<lastLayer.getLW())?
-                             w:lastLayer.getLW()-1;
+                        int lastW = w;
+                        /// the location of the  input activation
                         for (int g=0;g<groupPerline;g++){
                             for (int kh=0;kh<thisLayer.getSH();kh++){
                                 if (kh>=thisLayer.getKH())
                                     break;
-                                int lastH = /// the location of the  input activation
-                                    ((thisH*thisLayer.getSH()-hHalf+kh)<0)?0:
-                                    ((thisH*thisLayer.getSH()-hHalf+kh)<lastLayer.getLH())?
-                                     (thisH*thisLayer.getSH()-hHalf+kh):lastLayer.getLH()-1;
+                                int lastH = thisH*thisLayer.getSH()-hHalf+kh;
+                                /// the location of the  input activation
 
                                 if ((kh >= (thisLayer.getKH() - thisLayer.getSH()))
                                    || h == 0 || beginOfZone)
@@ -376,10 +369,34 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                                 else
                                     this->XIn[h].AddCtrl(RAWB);
 
-                                this->XIn[h].AddFeature(
-                                        groupPerline*lastH*lastLayer.getLW()+
-                                        groupPerline*lastW+g
-                                    );
+                                if (thisLayer.getPadType()==SAME_PAD){
+                                    lastW =
+                                        (lastW<0)?0:
+                                        (lastW<lastLayer.getLW())?
+                                         lastW:lastLayer.getLW()-1;
+                                    lastH =
+                                        (lastH<0)?0:
+                                        (lastH<lastLayer.getLH())?
+                                         lastH:lastLayer.getLH()-1;
+                                    this->XIn[h].AddFeature(
+                                            groupPerline*lastH*lastLayer.getLW()+
+                                            groupPerline*lastW+g
+                                        );
+                                }
+                                else if (thisLayer.getPadType()==ZERO_PAD){
+                                    if (lastW<0 || lastW>=lastLayer.getLW()
+                                     || lastH<0 || lastH>=lastLayer.getLH()){
+                                        this->XIn[h].AddZeroGroup();
+                                    }
+                                    else{
+                                        this->XIn[h].AddFeature(
+                                            groupPerline*lastH*lastLayer.getLW()+
+                                            groupPerline*lastW+g);
+                                    }
+                                }
+                                else{
+                                    assert(false);
+                                }
                             }
                             for (int kh=thisLayer.getSH();kh<thisLayer.getKH();kh++)
                                 if ((kh >= (thisLayer.getKH() - thisLayer.getSH()))
@@ -391,18 +408,18 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                     }
                 }
                 else{
-                    assert(thisLayer.getPadType()==SAME_PAD);
-
                     for (int w = thisW*thisLayer.getSW()-wHalf;
                              w<= thisW*thisLayer.getSW()+wHalf;w++){
-                        int lastW =
+                        int lastW = w;
+                        /// the location of the  input activation
                             (w<0)?0:
                             (w<lastLayer.getLW())?
                              w:lastLayer.getLW()-1;
 
                         for (int g=0;g<groupPerline;g++)
                             for (int kH = 0;kH<thisLayer.getKH();kH++){
-                                int lastH =
+                                int lastH = (thisH*thisLayer.getSH()-hHalf+kH);
+                                /// the location of the  input activation
                                     ((thisH*thisLayer.getSH()-hHalf+kH)<0)?0:
                                     ((thisH*thisLayer.getSH()-hHalf+kH)<lastLayer.getLH())?
                                      (thisH*thisLayer.getSH()-hHalf+kH):lastLayer.getLH()-1;
@@ -416,10 +433,34 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                                 else
                                     this->XIn[h].AddCtrl(RAB);
 
-                                this->XIn[h].AddFeature(
-                                        groupPerline*lastH*lastLayer.getLW()+
-                                        groupPerline*lastW+g
-                                    );
+                                if (thisLayer.getPadType()==SAME_PAD){
+                                    lastW =
+                                        (lastW<0)?0:
+                                        (lastW<lastLayer.getLW())?
+                                         lastW:lastLayer.getLW()-1;
+                                    lastH =
+                                        (lastH<0)?0:
+                                        (lastH<lastLayer.getLH())?
+                                         lastH:lastLayer.getLH()-1;
+                                    this->XIn[h].AddFeature(
+                                            groupPerline*lastH*lastLayer.getLW()+
+                                            groupPerline*lastW+g
+                                        );
+                                }
+                                else if (thisLayer.getPadType()==ZERO_PAD){
+                                    if (lastW<0 || lastW>=lastLayer.getLW()
+                                     || lastH<0 || lastH>=lastLayer.getLH()){
+                                        this->XIn[h].AddZeroGroup();
+                                    }
+                                    else{
+                                        this->XIn[h].AddFeature(
+                                            groupPerline*lastH*lastLayer.getLW()+
+                                            groupPerline*lastW+g);
+                                    }
+                                }
+                                else{
+                                    assert(false);
+                                }
                             }
                     }
                 }

@@ -72,6 +72,7 @@ public:
     inline void AddFeature(const T& feature){
         assert(!this->hasSorted);
         this->data.emplace_back(feature);
+        return;
     }
     inline void reserve(int len){
         assert(!this->hasSorted);
@@ -92,10 +93,13 @@ private:
     #endif // NDEBUG
     uint32_t groupNum;
 
+    std::vector<bool> isZeroGroup;/// for zero padding
+
 public:
     #ifndef NDEBUG
     SFIFO_In():SFIFO<int32_t>(){
         this->groupNumHasCalced = false;
+        this->isZeroGroup.clear();
         return;
     }
     #endif // NDEBUG
@@ -118,6 +122,20 @@ public:
         #ifndef NDEBUG
         this->groupNumHasCalced = true;
         #endif // NDEBUG
+        return;
+    }
+
+    inline void AddFeature(const int32_t& feature){
+        assert(!this->hasSorted);
+        this->isZeroGroup.push_back(false);
+        SFIFO::AddFeature(feature);
+        return;
+    }
+
+    inline void AddZeroGroup(){
+        assert(!this->hasSorted);
+        this->isZeroGroup.push_back(true);
+        SFIFO::AddFeature(0);
         return;
     }
 
