@@ -14,6 +14,11 @@
 #include <iostream>
 #include <assert.h>
 
+/// set to different position to avoid introduce
+/// extra computation when sparsity is high
+#define FEATURE_FILL_ZERO_POSITION 1
+#define  KERNEL_FILL_ZERO_POSITION 0
+
 using namespace std;
 
 extern const string LayerType[];
@@ -32,7 +37,8 @@ private:
 
 public:
     Kernel(int kernelSize):initial(kernelSize){
-        assert(kernelSize%GROUP_SIZE == 0);
+        assert(kernelSize >= MINIMA_WEIGHT_INTERVAL);
+        assert(kernelSize % GROUP_SIZE == 0);
         this->reordered.clear();
         return;
     }
@@ -114,6 +120,30 @@ private:
 	Layer(const Layer &);
 	Layer &operator=(const Layer &);
 
+	inline uint32_t FeatureGroupIdx(int groupPerLine,uint32_t h,uint32_t w,uint32_t g){
+	    return (h * this->lW + w ) * groupPerLine + g;
+	}
+
+    inline uint32_t KernelGroupIdx(uint32_t groupPerLine,uint32_t h,uint32_t w,uint32_t groupInLine){
+        assert(this->kD%GROUP_SIZE==0);
+	    return (w * this->kH + h) * groupPerLine + groupInLine;
+	}
+
+    inline int KernelGroupIdxToH(int groupIdx,int groupPerLine,int nextLayerKH){
+        assert(this->kN%GROUP_SIZE==0);
+        return (groupIdx / groupPerLine) % nextLayerKH - (nextLayerKH / 2);
+	}
+
+    inline int KernelGroupIdxToW(int groupIdx,int groupPerLine,int nextLayerKH,int nextLayerKW){
+        assert(this->kN%GROUP_SIZE==0);
+        return (groupIdx / groupPerLine) / nextLayerKH - (nextLayerKW / 2);
+	}
+
+    inline int KernelGroupIdxToK(int groupIdx,int groupPerLine){
+        assert(this->kN%GROUP_SIZE==0);
+        return (groupIdx % groupPerLine);
+	}
+
 public:
     Layer(int lH,int lW,int kN,
           int kH,int kW,int sH,int sW,int kD,
@@ -128,7 +158,7 @@ public:
               pattern((kN + KERNEL_GROUP_SIZE -1)
                           / KERNEL_GROUP_SIZE,vector<bool>(kH * kW * kD)),
               feature( kN,vector<vector<XTransIn::FeatureType> >
-                            (lH,vector<XTransIn::FeatureType>(lW))),
+                             (lH,vector<XTransIn::FeatureType>(lW))),
            reorderSeq(kN/KERNEL_GROUP_SIZE),
         sparseFeature(lH*lW*kD/ GROUP_SIZE),
             kernelLoc(kN/KERNEL_GROUP_SIZE){
@@ -227,7 +257,6 @@ public:
         for (uint32_t g=0;g<this->kernelLoc[kernel].size();g++){
             for (uint32_t i=0;i<this->kernelLoc[kernel][g].size()-1;i++)
                 sparseLoc.emplace_back(this->kernelLoc[kernel][g][i]);
-
             sparseLoc.emplace_back(
                     this->kernelLoc
                           [kernel][g]
@@ -240,7 +269,18 @@ public:
         assert(this->hasPartFeature
             && g>=0 && g<this->sparseFeature.size());
         for (auto it = this->sparseFeature[g].cbegin(); it != this->sparseFeature[g].cend();it++){
-            sparseFeature.AddFeature(*it,it == (this->sparseFeature[g].cend()-1));///this->sparseFeature[g][i]
+            ///this->sparseFeature[g][i]
+            sparseFeature.AddFeature(*it,it == (this->sparseFeature[g].cend()-1));
+        }
+        return;
+    }
+
+    inline void getSparseFeatureGroup(uint32_t g,vector<SparseDataInFIFO<XTransIn::FeatureType> >& sparseFeature) const{
+        assert(this->hasPartFeature
+            && g>=0 && g<this->sparseFeature.size());
+        for (auto it = this->sparseFeature[g].cbegin(); it != this->sparseFeature[g].cend();it++){
+            ///this->sparseFeature[g][i]
+            sparseFeature.emplace_back(*it,it == (this->sparseFeature[g].cend()-1));
         }
         return;
     }

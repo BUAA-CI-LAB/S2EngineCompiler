@@ -112,7 +112,6 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
     sys.CalcDFUDRAMAccess(thisLayer);
     #endif // ANALYZE
 
-
     #ifndef NDEBUG
     #ifdef PRINT_TO_FILE
     PrintProcess("[systolic array] printing weight input");
@@ -241,29 +240,29 @@ void Analyze::AnalyzeAlexNet(){
              <<"##  conv2  ##"<<std::endl
              <<"#############"<<std::endl;
     std::cout<<layer2.toString()<<"->"<<layer3.toString()<<"\n"<<std::endl;
-    analyze(layer2,layer3,5,5,1,1,"./AlexNet/conv2/");
+    analyze(layer2,layer3, 5, 5,1,1,"./AlexNet/conv2/");
     WorkLoad += layer3.GetWorkLoad(layer2,5,5);
 
-    std::cout<<"#############"<<std::endl
-             <<"##  conv3  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer4.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
-    analyze(layer4,layer5,3,3,1,1,"./AlexNet/conv3/");
-    WorkLoad += layer5.GetWorkLoad(layer4,3,3);
-
-    std::cout<<"#############"<<std::endl
-             <<"##  conv4  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
-    analyze(layer5,layer5,3,3,1,1,"./AlexNet/conv4/");
-    WorkLoad += layer5.GetWorkLoad(layer5,3,3);
-
-    std::cout<<"#############"<<std::endl
-             <<"##  conv5  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer5.toString()<<"->"<<layer6.toString()<<"\n"<<std::endl;
-    analyze(layer5,layer6,3,3,1,1,"./AlexNet/conv5/");
-    WorkLoad += layer6.GetWorkLoad(layer5,3,3);
+//    std::cout<<"#############"<<std::endl
+//             <<"##  conv3  ##"<<std::endl
+//             <<"#############"<<std::endl;
+//    std::cout<<layer4.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
+//    analyze(layer4,layer5, 3, 3,1,1,"./AlexNet/conv3/");
+//    WorkLoad += layer5.GetWorkLoad(layer4,3,3);
+//
+//    std::cout<<"#############"<<std::endl
+//             <<"##  conv4  ##"<<std::endl
+//             <<"#############"<<std::endl;
+//    std::cout<<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
+//    analyze(layer5,layer5, 3, 3,1,1,"./AlexNet/conv4/");
+//    WorkLoad += layer5.GetWorkLoad(layer5,3,3);
+//
+//    std::cout<<"#############"<<std::endl
+//             <<"##  conv5  ##"<<std::endl
+//             <<"#############"<<std::endl;
+//    std::cout<<layer5.toString()<<"->"<<layer6.toString()<<"\n"<<std::endl;
+//    analyze(layer5,layer6, 3, 3,1,1,"./AlexNet/conv5/");
+//    WorkLoad += layer6.GetWorkLoad(layer5,3,3);
 
     #ifdef ANALYZE
         std::cout<<endl;
@@ -436,6 +435,7 @@ void Analyze::AnalyzeVGG16(){
             <<" Tops ##"
             <<endl;
     #endif // ANALYZE
+    return;
 }
 
 void Analyze::AnalyzeVGG19(){

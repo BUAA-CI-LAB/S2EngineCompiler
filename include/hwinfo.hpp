@@ -16,7 +16,7 @@
 #define    EOW_BIT_WIDTH 1
 #define RELATIVE_LOC_BIT_WIDTH 2
 
-#define REFORMED
+//#define REFORMED
 
 /** network related parameter **/
 /// if the systolic array support 16-bit
@@ -66,11 +66,11 @@
 
 #define KERNEL_GROUP_SIZE SYS_WIDTH
 
-/// for network sparsity
-#define KERNEL_SPARSE_RATE 0
-#define FEATURE_ZERO_PERCENT 0
+#define MINIMA_WEIGHT_INTERVAL 15
 
-#define MINIMA_WEIGHT_INTERVAL SYS_ROW
+/// for network sparsity
+#define KERNEL_SPARSE_RATE   80
+#define FEATURE_ZERO_PERCENT 80
 
 /// for value precision
 #define KERNEL_16_BIT_RATE 0     ///  KERNEL_16_BIT_RATE%    of the non-zero weight     is 16 bit

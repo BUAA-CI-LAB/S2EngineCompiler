@@ -292,7 +292,7 @@ void Systolic::TransXIn(Layer& thisLayer,Layer& lastLayer){
                 else{
                     #ifdef REFORMED
                     for (int i=0;i<thisLayer.getKernelGroupNum();i++)
-                        this->XTran[g][h].emplace_back(0,0,true);
+                        this->XTran[g][h].emplace_back(0,FEATURE_FILL_ZERO_POSITION,true);
                     #else
                     for (int j=0;j<this->saWorkLoad[g].GetXWorkLoad(i);j++)
                         this->XTran[g][h].emplace_back((XTransIn::FeatureType)0);

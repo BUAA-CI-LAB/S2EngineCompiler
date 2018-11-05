@@ -81,7 +81,6 @@
 
 //#define ANALYZE
 
-
 #define PRINT_PROCESS
 
 #define GENERATE_DATA
@@ -90,7 +89,6 @@
 
 #define PRINT_TO_FILE
 
-
 //#define PRINT_DEBUG_INFO
 
 //#define PRINT_MAP_RESULT
@@ -98,7 +96,6 @@
 //#define PRINT_COMPONENT
 
 //#define PRINT_TO_STD
-
 
 //#define GENERATE_CODE
 

@@ -307,7 +307,6 @@ public:
         return this->inputCycle;
     }
 
-
     ~RUArray(){
         #ifdef PRINT_INTERMEDIA_INFO
         fclose(fpXIn);
@@ -315,8 +314,6 @@ public:
         fclose(fpLInAnalResult);
         #endif // PRINT_INTERMEDIA_INFO
     }
-
-
 
     #ifdef PRINT_INTERMEDIA_INFO
     void PrintXIn();

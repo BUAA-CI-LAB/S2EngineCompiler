@@ -1,9 +1,5 @@
 #include "../include/net.hpp"
 
-/// set to different position to avoid introduce
-/// extra computation when sparsity is high
-#define FEATURE_FILL_ZERO_POSITION 1
-#define  KERNEL_FILL_ZERO_POSITION 0
 
 const string LayerType[]={
 /** CONV_LAYER = 0 **/ "conv",
@@ -29,6 +25,7 @@ bool Kernel::CheckPattern(const vector<bool>& pattern){
 void Kernel::Reorder(const vector<int>& reorderSeq,const vector<bool>& pattern){
     this->reordered.clear();
     this->reordered.reserve(reorderSeq.size()*GROUP_SIZE);
+
     for (const auto& it : reorderSeq){
         #ifdef REMOVE_ALL_ZERO_GROUP
         assert(false);
@@ -39,9 +36,13 @@ void Kernel::Reorder(const vector<int>& reorderSeq,const vector<bool>& pattern){
                 allZero = false;
                 this->reordered.emplace_back(this->initial[it*GROUP_SIZE+j]);
             }
-        if (allZero)
+        if (allZero){
+            /// wenzhi: a zero in all zero group has been inserted in the GenReorderSeq process
+            assert(false);
             this->reordered.emplace_back(0);
+        }
     }
+    assert(this->reordered.size() >= MINIMA_WEIGHT_INTERVAL);
     this->reordered.shrink_to_fit();
     return;
 }
@@ -174,15 +175,13 @@ void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<XTransIn>& xTran
 #else
 void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<SparseDataInFIFO<XTransIn::FeatureType> >& xTrans){
 #endif //REFORMED
-    assert(this->kD%GROUP_SIZE==0);
-    const int groupPerLine = this->kN/GROUP_SIZE;
-    const int halfH = nextLayer.kH/2,
-              halfW = nextLayer.kW/2;
-
+    assert(this->kD%GROUP_SIZE==0
+        && this->hasPartFeature);
+    const uint32_t groupPerLine = (this->kN / GROUP_SIZE);
     for (const auto& it : nextLayer.reorderSeq[kG]){
-        const int h  = (it/groupPerLine)%nextLayer.kH-halfH,
-                  w  = (it/groupPerLine)/nextLayer.kH-halfW,
-                  kB = (it%groupPerLine)*GROUP_SIZE;
+        const int h = this->KernelGroupIdxToH(it,groupPerLine,nextLayer.kH),
+                  w = this->KernelGroupIdxToW(it,groupPerLine,nextLayer.kH,nextLayer.kW),
+                  k = this->KernelGroupIdxToK(it,groupPerLine);
         int thisX = 0,thisY = 0;
         if (nextLayer.padding==SAME_PAD){
             thisX = (x+w)<0?0:
@@ -196,26 +195,13 @@ void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<SparseDataInFIFO
             assert(false);
 
         #ifdef REFORMED
-        bool hasBegin = false;
-        int lastOffset = 0;
-        XTransIn::FeatureType lastFeature = 0;
-        #endif // REFORMED
-        for (int i=0;i<GROUP_SIZE;i++){
-            #ifdef REFORMED
-                if (this->feature[kB+i][thisY][thisX]!=0){
-                    if (hasBegin)
-                        xTrans.emplace_back(lastFeature,lastOffset,false);
-                    lastFeature = this->feature[kB+i][thisY][thisX];
-                    lastOffset  = i;
-                    hasBegin = true;
-                }
-            #else
-                if(nextLayer.pattern[kG][it*GROUP_SIZE+i])
-                    xTrans.emplace_back(this->feature[kB+i][thisY][thisX]);
-            #endif // REFORMED
-        }
-        #ifdef REFORMED
-            xTrans.emplace_back(lastFeature,lastOffset,true);
+        const int fGroupIdx = this->FeatureGroupIdx((this->kN / GROUP_SIZE),thisY,thisX,k);
+        this->getSparseFeatureGroup(fGroupIdx,xTrans);
+        #else
+        const int kB = k * GROUP_SIZE;
+        for (int i=0;i<GROUP_SIZE;i++)
+            if(nextLayer.pattern[kG][it*GROUP_SIZE+i])
+                xTrans.emplace_back(this->feature[kB+i][thisY][thisX]);
         #endif // REFORMED
     }
     return;
@@ -269,7 +255,6 @@ void Layer::PartitionFeature(){
     assert(this->hasLoadFeature
         &&!this->hasPartFeature
         &&(this->kD % GROUP_SIZE ==0));
-    assert(!this->hasPartFeature);
     this->allGroupSize = 0;
     int groupPerLine = this->kN / GROUP_SIZE;
     this->sparseFeature.clear();
@@ -286,8 +271,9 @@ void Layer::PartitionFeature(){
                         this->sparseFeature.back()
                             .emplace_back(this->feature[g*GROUP_SIZE+i][h][w],i);
                     }
-                if (allZero)
+                if (allZero){
                     this->sparseFeature.back().emplace_back(0,FEATURE_FILL_ZERO_POSITION);
+                }
                 this->sparseFeature.back().shrink_to_fit();
                 this->allGroupSize+=this->sparseFeature.back().size();
             }
@@ -430,6 +416,7 @@ void Layer::GenReorderSeq(){
               * this->kW
               * this->kD;
 
+    assert(this->pattern.size() == (unsigned)(this->kN/KERNEL_GROUP_SIZE));
     assert(this->pattern[0].size()==kSize);
 
     for (int kG = 0;kG<(this->kN/KERNEL_GROUP_SIZE);kG++){
@@ -438,26 +425,51 @@ void Layer::GenReorderSeq(){
         this-> kernelLoc[kG].reserve(this->kW * this->kH * groupPerLine);
         this->reorderSeq[kG].clear();
         this->reorderSeq[kG].reserve(this->kW * this->kH * groupPerLine);
+
+        int nonZeroNum = 0;
+        for (int g=0;g<groupPerLine * this->kW * this->kH;g++){
+            const int groupBase = g * GROUP_SIZE;
+            bool allZero = true;
+            for (int i=0;i<GROUP_SIZE;i++)
+                if (this->pattern[kG][groupBase+i]){
+                    allZero = false;
+                    nonZeroNum++;
+                }
+            if (allZero){
+                this->pattern[kG][groupBase + KERNEL_FILL_ZERO_POSITION] = true;
+                nonZeroNum++;
+            }
+        }
+
         for (int w=0;w<this->kW;w++)
             for (int g=0;g<groupPerLine;g++)
                 for (int h=0;h<this->kH;h++){
-                    const int groupBase = ((w*this->kH + h)*groupPerLine + g)*GROUP_SIZE;
+                    const int nowGroup  = this->KernelGroupIdx((this->kD / GROUP_SIZE),h,w,g);
+                    const int groupBase = nowGroup * GROUP_SIZE;
                     #ifdef REMOVE_ALL_ZERO_GROUP
                     assert(false);/** an unsuccessful attempt here by wenzhi ... **/
                     #endif //REMOVE_ALL_ZERO_GROUP
-                    const int nowGroup = w*this->kH*groupPerLine + h*groupPerLine + g;
                     assert(this->reorderSeq[kG].size()==groupSerial);
                     this-> kernelLoc[kG].emplace_back();
                     this->reorderSeq[kG].emplace_back(nowGroup);
 
                     bool allZero = true;
-                    this->kernelLoc[kG].back().reserve(GROUP_SIZE);
+                    this-> kernelLoc[kG].back().reserve(GROUP_SIZE);
                     for (int i=0;i<GROUP_SIZE;i++)
                         if (this->pattern[kG][groupBase+i]){
                             allZero = false;
                             this->kernelLoc[kG].back().emplace_back(i);
                         }
+                        else{
+                            if (nonZeroNum < MINIMA_WEIGHT_INTERVAL){
+                                allZero = false;
+                                this->pattern[kG][groupBase+i] = true;
+                                this->kernelLoc[kG].back().emplace_back(i);
+                                nonZeroNum++;
+                            }
+                        }
                     if (allZero){
+                        assert(false);/// wenzhi: a zero in all zero group has been inserted
                         this->  pattern[kG][groupBase  ] = true;
                         this->kernelLoc[kG].back().emplace_back(KERNEL_FILL_ZERO_POSITION);
                     }
@@ -485,61 +497,6 @@ void Layer::Reorder(){
     }
     return;
 }
-
-//Layer::Layer(int lH,int lW,int kN,
-//             int kH,int kW,
-//             int sH,int sW,int kD,
-//             enum PAD_TYPE padding){
-//    assert(kN%KERNEL_GROUP_SIZE==0);
-//
-//    this->idx = Layer::idxCounter++;
-//
-//    this->type = CONV_LAYER;
-//    this->kN = kN; this->kD = kD;
-//    this->lH = lH; this->lW = lW;
-//    this->kH = kH; this->kW = kW;
-//    this->sH = sH; this->sW = sW;
-//    this->padding = padding;
-//
-//    this->hasLoadKernel  = false;
-//    this->hasLoadFeature = false;
-//    this->hasLoadPattern = false;
-//    this->hasPartFeature = false;
-//    this->hasGenReorderSeq=false;
-//
-//    #ifdef PRINT_INTERMEDIA_INFO
-//    this->reshapedG  = fopen(RESHAPED_G_FILE_PATH  ,"w+");
-//    this->reshapedW  = fopen(RESHAPED_W_FILE_PATH  ,"w+");
-//    this->reshapedX  = fopen(RESHAPED_X_FILE_PATH  ,"w+");
-//    this->reshapedLoc= fopen(RESHAPED_LOC_FILE_PATH,"w+");
-//    this->fpFeature  = fopen(RESHAPED_F_FILE_PATH  ,"w+");
-//    #endif // PRINT_INTERMEDIA_INFO
-//
-//    int kerneSize = kH * kW * kD;
-//
-//
-//    this->kernel.reserve(kN);
-//    for (int k=0;k<kN;k++)
-//        this->kernel.push_back(Kernel(kerneSize));
-//
-//    this->feature.resize(kN);
-//    for (int k=0;k<kN;k++){
-//        this->feature[k].resize(lH);
-//        for (int h=0;h<lH;h++)
-//            this->feature[k][h].resize(lW);
-//    }
-//
-//    this->pattern.resize(kN);
-//    for (int k=0;k<kN;k++)
-//        this->pattern[k].resize(kerneSize);
-//
-//    this->sparseFeature.resize(lH*lW*kD/GROUP_SIZE);
-//
-//    this->reorderSeq.resize(kN/KERNEL_GROUP_SIZE);
-//    this->kernelLoc.resize(kN/KERNEL_GROUP_SIZE);
-//    return;
-//}
-
 
 #ifdef PRINT_INTERMEDIA_INFO
 void Layer::PrintFeature(){
