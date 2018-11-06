@@ -79,13 +79,15 @@
 
 #define PRINT_PROCESS
 
-//#define GENERATE_DATA
+#define GENERATE_DATA
 
 #define XUCHENG_PROTOCOL
 
 #define XUCHENG_MISTAKE
 
 #define TRANS_DATA
+
+//#define ROUND_IN
 
 //#define PRINT_TO_FILE
 

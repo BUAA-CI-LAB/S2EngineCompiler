@@ -59,13 +59,29 @@ bool RU::CheckXOut(const vector<XTransIn>& SAXData){
 
 bool CE::CheckXOut(
         const vector<vector<vector<XTransIn> > >& SAXData,
-        int beginPos[],
-        int nowH){
+        int beginPos[],int nowH){
     for (int g=0;g<SYS_GROUP;g++)
         if (!this->rus[g].CheckXOut(SAXData[g][nowH],beginPos[g])){
             std::cout<<g<<","<<nowH<<","<<beginPos[g]<<std::endl;
             return false;
         }
+    return true;
+}
+
+bool CE::CheckXOut(
+        const vector<SparseDataInFIFO<XTransIn::FeatureType> >& SAXData,
+        int& beginPos){
+    for (const auto& xit : this->xFIFO){
+        if (!xit.equal(SAXData[beginPos])){
+            std::cout<<"CE data mismatch:"<<std::endl
+                     <<"\tgenerated:"<<std::endl;
+            xit.Print();
+            std::cout<<"\trequired:"<<std::endl;
+            SAXData[beginPos].Print();
+            return false;
+        }
+        beginPos++;
+    }
     return true;
 }
 
@@ -260,8 +276,12 @@ void RUArray::TransXIn(const Layer& layer){
         for (int i=0;i<XInSize;i++)
             if (this->XIn[h].IfCtrl(i))
                 this->XData[h].AddCtrl(this->XIn[h].GetCtrl(i));
-            else
-                layer.getSparseFeatureGroup(this->XIn[h].GetFeature(i),this->XData[h]);
+            else{
+                if (!this->XIn[h].IsZeroGroup(i))
+                    layer.getSparseFeatureGroup(this->XIn[h].GetFeature(i),this->XData[h]);
+                else
+                    this->XData[h].AddZeroFeatureGroup();
+            }
         this->XData[h].shrink_to_fit();
     }
     assert(this->CheckXDataHomo());
@@ -291,8 +311,6 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
          &&!this->hasGenXIn);
 
     const int workLoad = SAXIn[0][0].GetWorkLoad();
-    const int wHalf = (thisLayer.getKW()-1)/2,
-              hHalf = (thisLayer.getKH()-1)/2;
     const int groupPerline   = thisLayer.getKD()/GROUP_SIZE;
     const int groupPerKernel = thisLayer.getKH()
                              * thisLayer.getKW()*groupPerline;
@@ -352,15 +370,16 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                     }
                 }
                 if (!endOfZone){
-                    for (int w = thisW*thisLayer.getSW()-wHalf;
-                             w<= thisW*thisLayer.getSW()+wHalf;w++){
-                        int lastW = w;
+                    for (int w = thisW * thisLayer.getSW();
+                             w < thisW * thisLayer.getSW()
+                                       + thisLayer.getKW();w++){
+                        int lastW =  w - thisLayer.getWPadOff();
                         /// the location of the  input activation
                         for (int g=0;g<groupPerline;g++){
                             for (int kh=0;kh<thisLayer.getSH();kh++){
                                 if (kh>=thisLayer.getKH())
                                     break;
-                                int lastH = thisH*thisLayer.getSH()-hHalf+kh;
+                                int lastH = thisH*thisLayer.getSH()-thisLayer.getHPadOff()+kh;
                                 /// the location of the  input activation
 
                                 if ((kh >= (thisLayer.getKH() - thisLayer.getSH()))
@@ -380,8 +399,7 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                                          lastH:lastLayer.getLH()-1;
                                     this->XIn[h].AddFeature(
                                             groupPerline*lastH*lastLayer.getLW()+
-                                            groupPerline*lastW+g
-                                        );
+                                            groupPerline*lastW+g);
                                 }
                                 else if (thisLayer.getPadType()==ZERO_PAD){
                                     if (lastW<0 || lastW>=lastLayer.getLW()
@@ -408,23 +426,18 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                     }
                 }
                 else{
-                    for (int w = thisW*thisLayer.getSW()-wHalf;
-                             w<= thisW*thisLayer.getSW()+wHalf;w++){
-                        int lastW = w;
+                    for (int w = thisW*thisLayer.getSW();
+                             w < thisW*thisLayer.getSW()
+                                     + thisLayer.getKW();w++){
+                        int lastW = w - thisLayer.getWPadOff();
                         /// the location of the  input activation
-                            (w<0)?0:
-                            (w<lastLayer.getLW())?
-                             w:lastLayer.getLW()-1;
 
                         for (int g=0;g<groupPerline;g++)
-                            for (int kH = 0;kH<thisLayer.getKH();kH++){
-                                int lastH = (thisH*thisLayer.getSH()-hHalf+kH);
+                            for (int kh = 0;kh<thisLayer.getKH();kh++){
+                                int lastH = thisH*thisLayer.getSH()-thisLayer.getHPadOff()+kh;
                                 /// the location of the  input activation
-                                    ((thisH*thisLayer.getSH()-hHalf+kH)<0)?0:
-                                    ((thisH*thisLayer.getSH()-hHalf+kH)<lastLayer.getLH())?
-                                     (thisH*thisLayer.getSH()-hHalf+kH):lastLayer.getLH()-1;
 
-                                if (kH < (thisLayer.getKH()-thisLayer.getSH())){
+                                if (kh < (thisLayer.getKH()-thisLayer.getSH())){
                                     if (h==0 || beginOfZone)
                                         this->XIn[h].AddCtrl(RAB);
                                     else
@@ -537,6 +550,19 @@ bool RUArray::CheckXL(const vector<vector<vector<XTransIn> > >& SAXData){
 }
 #else
 bool  RUArray::CheckXL(const vector<vector<vector<SparseDataInFIFO<XTransIn::FeatureType> > > >& SAXData){
+    vector<int> curPos(SYS_HEIGHT,0);
+    for (int i=0;i<this->groupNum;i++){
+        /** prepare XIn for RUArray **/
+        for (int h=0;h<SYS_HEIGHT;h++){
+            this->ce[h].PeriodPush(this->XData[h]);
+        }
+        for (int h=0;h<SYS_HEIGHT;h++){
+            if (!this->ce[h].CheckXOut(SAXData[0][h],curPos[h])){
+                std::cout<<"wenzhi height:"<<h<<" group idx:"<<i<<std::endl;
+                return false;
+            }
+        }
+    }
     return true;
 }
 #endif // REFORMED

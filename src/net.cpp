@@ -182,18 +182,17 @@ void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<SparseDataInFIFO
         const int h = this->KernelGroupIdxToH(it,groupPerLine,nextLayer.kH),
                   w = this->KernelGroupIdxToW(it,groupPerLine,nextLayer.kH,nextLayer.kW),
                   k = this->KernelGroupIdxToK(it,groupPerLine);
-        int thisX = 0,thisY = 0;
+        int thisX = (x+w) + (nextLayer.kW/2) - nextLayer.wPadOff,
+            thisY = (y+h) + (nextLayer.kH/2) - nextLayer.hPadOff;
         if (nextLayer.padding==SAME_PAD){
-            thisX = (x+w)<0?0:
-                    (x+w)<this->lW?
-                    (x+w):this->lW-1;
-            thisY = (y+h)<0?0:
-                    (y+h)<this->lH?
-                    (y+h):this->lH-1;
+            thisX = thisX<0?0:
+                    thisX<this->lW?
+                    thisX:this->lW-1;
+            thisY = thisY<0?0:
+                    thisY<this->lH?
+                    thisY:this->lH-1;
         }
         else if (nextLayer.padding==ZERO_PAD){
-            thisX = (x+w);
-            thisY = (y+h);
             if (thisX < 0 || thisX >= this->lW
              || thisY < 0 || thisY >= this->lH){
                 #ifdef REFORMED
@@ -202,7 +201,7 @@ void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<SparseDataInFIFO
                 const int kB = k * GROUP_SIZE;
                 for (int i=0;i<GROUP_SIZE;i++)
                     if(nextLayer.pattern[kG][it*GROUP_SIZE+i])
-                        xTrans.emplace_back(0);
+                        xTrans.emplace_back((XTransIn::FeatureType)0);
                 #endif // REFORMED
                 continue;
             }
@@ -234,8 +233,6 @@ bool Layer::Compute(const Layer& lastLayer){
     assert(this->hasLoadFeature);
     assert(this->hasLoadBias);
     #endif // GENERATE_DATA
-    assert(this->padding == SAME_PAD
-        || this->padding == ZERO_PAD);
     assert(this->kH%2==1&&this->kW%2==1);
     int halfW = this->kW/2,
         halfH = this->kH/2;
@@ -251,18 +248,25 @@ bool Layer::Compute(const Layer& lastLayer){
                 #endif // GENERATE_DATA
                 for (int w=-halfW,kw=0;w<=halfW;w++,kw++){
                     for (int h=-halfH,kh=0;h<=halfH;h++,kh++){
-                        int lastX = x * this->sW + w,
-                            lastY = y * this->sH + h;
+                        int lastX = x * this->sW - this->wPadOff + kw,
+                            lastY = y * this->sH - this->hPadOff + kh;
                         if (this->padding == SAME_PAD){
-                            lastX = lastX>=0?lastX:0;
-                            lastX = lastX>=lastLayer.getLW()?lastLayer.getLW()-1:lastX;
-                            lastY = lastY>=0?lastY:0;
-                            lastY = lastY>=lastLayer.getLH()?lastLayer.getLH()-1:lastY;
+                            lastX = lastX<0?0:
+                                    lastX>=lastLayer.getLW()?(lastLayer.getLW()-1):lastX;
+                            lastY = lastY<0?0:
+                                    lastY>=lastLayer.getLH()?(lastLayer.getLH()-1):lastY;
                         }
                         else if (this->padding == ZERO_PAD){
                             if (lastX<0 || lastX>=lastLayer.getLW()
                              || lastY<0 || lastY>=lastLayer.getLH())
                                 continue;
+                        }
+                        else if (this->padding == NONE_PAD){
+                            assert(this->kH%2==1&&this->kW%2==1);
+                            lastX = x * this->sW + kw;
+                            lastY = y * this->sH + kh;
+                            assert(lastX>=0 && lastX<lastLayer.getLW()
+                                && lastY>=0 && lastY<lastLayer.getLH());
                         }
                         else/// other padding style has not been exploited
                             assert(false);
@@ -282,7 +286,11 @@ bool Layer::Compute(const Layer& lastLayer){
                 #ifdef GENERATE_DATA
                 this->feature[k][y][x] = tempFeature;
                 #else
+                #ifdef ROUND_IN
+                if (std::abs(this->feature[k][y][x] - tempFeature)>std::abs(this->feature[k][y][x])/10000){
+                #else
                 if (this->feature[k][y][x] != tempFeature){
+                #endif // ROUND_IN
                     std::cout<<"k:"<<k<<" y:"<<y<<" x:"<<x<<std::endl;
                     std::cout<<"loaded feature:"<<this->feature[k][y][x]<<std::endl;
                     std::cout<<"actual output :"<<tempFeature<<std::endl;
@@ -403,7 +411,7 @@ void Layer::LoadKernel(const string& prefix,int actD,int D){
     for (int k=0;k<this->kN;k++){
         for (int c=0;c<columNum;c++){
             for (int i=0;i<actD;i++){
-                float value;
+                double value;
                 ifs >> value;
                 this-> kernel[k].AddValue(c*D + i,(WTransIn::WeightType)value);
                 this->pattern[k][c*D + i] = (((WTransIn::WeightType)value)!=0);
@@ -497,7 +505,7 @@ void Layer::LoadFeature(const string& prefix,int actD,int D, const string& fileN
             for (auto& wit : hit){
         #endif // XUCHENG_MISTAKE
                 #ifdef XUCHENG_PROTOCOL
-                float tempFeature;
+                double tempFeature;
                 #else
                 XTransIn::FeatureType tempFeature;
                 #endif // XUCHENG_PROTOCOL

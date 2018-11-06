@@ -23,7 +23,8 @@ enum LAYER_TYPE {
 enum PAD_TYPE{
     SAME_PAD,
     ZERO_PAD,
-    NONE_PAD
+    NONE_PAD,
+    ZERO_OFF /// zero padding with offset
 };
 
 class Pattern{

@@ -48,7 +48,7 @@ public:
     void PrintXIn_out(const string& name){
         FILE* fp = fopen(name.c_str(),"w+");
         for (uint32_t i=0;i<this->xOut.size();i++)
-            fprintf(fp,"%d ",this->xOut[i]);
+            fprintf(fp,"%s ",std::to_string(this->xOut[i]).c_str());
         fclose(fp);
         return;
     }
@@ -76,12 +76,12 @@ private:
 
     inline void SendRUPlaceHolder(){
         /** "broadcast" place holder to RU's FIFO **/
-        this->xFIFO.emplace_back  (SparseDataInFIFO<XTransIn::FeatureType> (0,0,true));
+        this->xFIFO.emplace_back  (SparseDataInFIFO<XTransIn::FeatureType> (0,FEATURE_FILL_ZERO_POSITION,true));
         return;
     }
     inline void SendSFPlaceHolder(){
         /** "broadcast" place holder to sync FIFO **/
-        this->upperFIFOpt->emplace(SparseDataInFIFO<XTransIn::FeatureType> (0,0,true));
+        this->upperFIFOpt->emplace(SparseDataInFIFO<XTransIn::FeatureType> (0,FEATURE_FILL_ZERO_POSITION,true));
         return;
     }
     inline void SendRU(const SparseDataInFIFO<XTransIn::FeatureType> & feature){
@@ -122,7 +122,13 @@ public:
         int beginPos[],
         int nowH
     );
-    inline void GenXOut(const vector<SparseLocInFIFO> wLoc[]){
+
+    inline bool CheckXOut(
+        const vector<SparseDataInFIFO<XTransIn::FeatureType> >& SAXData,
+        int& beginPos
+    );
+
+    inline void GenXOut(const vector<vector<SparseLocInFIFO> >& wLoc){
         for (int i=0;i<SYS_GROUP;i++)
             this->rus[i].GenXout(this->xFIFO,wLoc[i]);
         return;
@@ -176,9 +182,9 @@ private:
      ** and whether is the last nonzero element in the group
      **/
 
-    CE ce[SYS_HEIGHT];
+    vector<CE> ce;///[SYS_HEIGHT]
 
-    vector<SparseLocInFIFO> wloc[SYS_GROUP];
+    vector<vector<SparseLocInFIFO> > wloc;///[SYS_GROUP]
 
     bool hasGenXIn,
          hasGenLIn,
@@ -198,7 +204,7 @@ private:
           inputCycle,
           groupNum;
 
-    vector<int> cacheData[SYS_GROUP];
+    vector<vector<int> > cacheData;///[SYS_GROUP]
 
     bool   CheckXInHomo();
     bool   CheckLInHomo();
@@ -213,10 +219,13 @@ private:
 
 public:
     RUArray():
-        XIn    (SYS_HEIGHT),
-        XData  (SYS_HEIGHT),
-        LocIn  (SYS_GROUP,vector<int>()),           ///[SYS_GROUP]
-        LocData(SYS_GROUP,vector<SparseLocInFIFO>())///[SYS_GROUP]
+        XIn      (SYS_HEIGHT),
+        XData    (SYS_HEIGHT),
+        LocIn    (SYS_GROUP,vector<int>()),            ///[SYS_GROUP]
+        LocData  (SYS_GROUP,vector<SparseLocInFIFO>()),///[SYS_GROUP]
+        ce       (SYS_HEIGHT),                         ///[SYS_HEIGHT]
+        wloc     (SYS_GROUP,vector<SparseLocInFIFO>()),///[SYS_GROUP]
+        cacheData(SYS_GROUP,vector<int>())             ///[SYS_GROUP]
     {
         assert(((1<< LOC_BIT_WIDTH   )>=GROUP_SIZE)
              &&((1<<(LOC_BIT_WIDTH-1))< GROUP_SIZE));

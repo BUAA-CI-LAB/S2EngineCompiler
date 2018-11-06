@@ -16,8 +16,6 @@
 
 /// set to different position to avoid introduce
 /// extra computation when sparsity is high
-#define FEATURE_FILL_ZERO_POSITION 1
-#define  KERNEL_FILL_ZERO_POSITION 0
 
 using namespace std;
 
@@ -32,8 +30,8 @@ class Kernel{
  **          ......
  **/
 private:
-    vector<int>  reordered;
-    vector<int>  initial;
+    vector<WTransIn::WeightType>  reordered;
+    vector<WTransIn::WeightType>  initial;
 
 public:
     Kernel(int kernelSize):initial(kernelSize){
@@ -59,7 +57,7 @@ public:
         this->initial[idx]=value;
         return;
     }
-    inline int GetWeight(uint32_t idx) const{
+    inline WTransIn::WeightType GetWeight(uint32_t idx) const{
         assert(idx>=0 && idx<this->initial.size());
         return this->initial[idx];
     }
@@ -77,6 +75,7 @@ private:
     static int idxCounter;
     const enum LAYER_TYPE type;
     const enum PAD_TYPE padding;
+    const uint8_t hPadOff,wPadOff;
     const int lH,lW;
     const int kN,kH,kW,kD;
     const int sH,sW;
@@ -157,14 +156,20 @@ private:
 public:
     Layer(int lH,int lW,int kN,
           int kH,int kW,int sH,int sW,int kD,
-          enum PAD_TYPE padding)
+          enum PAD_TYPE padding,
+          uint8_t hPadOff,
+          uint8_t wPadOff)
           : idx(Layer::idxCounter++),
             type(CONV_LAYER),
             padding(padding),
+            hPadOff(hPadOff),
+            wPadOff(wPadOff),
             lH(lH),lW(lW),
             kN(kN),kH(kH),kW(kW),kD(kD),
             sH(sH),sW(sW),
+            #ifndef GENERATE_DATA
                  bias( kN),
+            #endif // GENERATE_DATA
                kernel( kN,Kernel(kH * kW * kD)),
               pattern((kN + KERNEL_GROUP_SIZE -1)
                           / KERNEL_GROUP_SIZE,vector<bool>(kH * kW * kD)),
@@ -202,6 +207,9 @@ public:
     inline int KerIdx2GroupIdx(int kerIdx) const{
         return kerIdx/SYS_WIDTH;
     }
+
+    inline uint8_t getHPadOff() const {return this->hPadOff;}
+    inline uint8_t getWPadOff() const {return this->wPadOff;}
 
     inline int getLH()const {return this->lH;}
     inline int getLW()const {return this->lW;}
@@ -435,15 +443,22 @@ private:
 
     const enum PAD_TYPE padding;
 
+    const uint8_t hPadOff;
+    const uint8_t wPadOff;
+
     const uint8_t featureSparse;
     const uint8_t  kernelSparse;
 
 public:
     LayerDimension(int h,int w,int d,
                    enum PAD_TYPE padding = SAME_PAD,
+                   uint8_t hPadOff = 0,
+                   uint8_t wPadOff = 0,
                    uint8_t featureSparse = FEATURE_ZERO_PERCENT,
                    uint8_t  kernelSparse = KERNEL_SPARSE_RATE)
         :h(h),w(w),d((d+GROUP_SIZE-1)/GROUP_SIZE),actD(d),padding(padding),
+               hPadOff(hPadOff),
+               wPadOff(wPadOff),
          featureSparse(featureSparse),
           kernelSparse( kernelSparse){
         assert(this->featureSparse>=0 && this->featureSparse<=100);
@@ -454,8 +469,12 @@ public:
     inline int GetW   () const{return this->w;}
     inline int GetD   () const{return this->d * GROUP_SIZE;}
     inline int GetActD() const{return this->actD;}
-    inline int GetFS  () const{return this->featureSparse;}
-    inline int GetKS  () const{return this-> kernelSparse;}
+
+    inline uint8_t GetFS() const{return this->featureSparse;}
+    inline uint8_t GetKS() const{return this-> kernelSparse;}
+
+    inline uint8_t GetHPadOff() const{return this->hPadOff;}
+    inline uint8_t GetWPadOff() const{return this->wPadOff;}
 
     inline enum PAD_TYPE GetPadding() const{
         return this->padding;

@@ -81,7 +81,9 @@ private:
     inline void MKLayerDir(const string& prefix,
                            const string& layerName) const{
         this->MKDir(prefix+"/"+layerName            );
+        #ifdef GENERATE_DATA
         this->MKDir(prefix+"/"+layerName+"/data"   );
+        #endif // GENERATE_DATA
         this->MKDir(prefix+"/"+layerName+"/transed");
         #ifdef REFORMED
         this->MKDir(prefix+"/"+layerName+"/transed/SA_XIn_reformed/");
@@ -171,13 +173,15 @@ public:
         return;
     }
 
-    void AnalyzeRealAlexNet(std::string path);
-    void AnalyzeRealVGG16  (std::string path);
-    void AnalyzeRealVGG19  (std::string path);
-
+    #ifdef GENERATE_DATA
     void AnalyzeAlexNet();
     void AnalyzeVGG16();
     void AnalyzeVGG19();
+    #else
+    void AnalyzeRealAlexNet(std::string path);
+    void AnalyzeRealVGG16  (std::string path);
+    void AnalyzeRealVGG19  (std::string path);
+    #endif // GENERATE_DATA
 
     void GenPEArrayTestData(
             LayerDimension& lastLayerInfo,

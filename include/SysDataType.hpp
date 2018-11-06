@@ -12,6 +12,9 @@
 #include <iostream>
 #include <fstream>
 
+#define FEATURE_FILL_ZERO_POSITION 1
+#define  KERNEL_FILL_ZERO_POSITION 0
+
 #define IDLE -1
 #define NONE -2
 
@@ -47,7 +50,7 @@ struct str_list{
 
 class XTransIn{
 public:
-    typedef int32_t FeatureType;
+    typedef int64_t FeatureType;
 
 private:
     FeatureType value;
@@ -101,7 +104,7 @@ public:
 
 class WTransIn{
 public:
-    typedef int32_t WeightType;
+    typedef int64_t WeightType;
 
 private:
     WeightType weight;
@@ -242,6 +245,14 @@ public:
     }
     inline const T& GetValue() const{
         return this->value;
+    }
+    inline bool equal(const SparseDataInFIFO& sdif) const{
+        return this->eog   == sdif.eog
+            && this->loc   == sdif.loc
+            && this->value == sdif.value;
+    }
+    inline void Print() const{
+        std::cout<<"value:"<<this->value<<" loc:"<<this->loc<<" eog:"<<this->eog<<std::endl;
     }
 };
 

@@ -42,13 +42,17 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
                     thisLayerInfo.GetD(),
                     kH,kW,sH,sW,
                     lastLayerInfo.GetD(),
-                    thisLayerInfo.GetPadding());
+                    thisLayerInfo.GetPadding(),
+                    thisLayerInfo.GetHPadOff(),
+                    thisLayerInfo.GetWPadOff());
     Layer lastLayer(lastLayerInfo.GetH(),
                     lastLayerInfo.GetW(),
                     lastLayerInfo.GetD(),
                      3, 3, 1, 1,
                      GROUP_SIZE,
-                    lastLayerInfo.GetPadding());///the remained three parameter does not matter
+                    lastLayerInfo.GetPadding(),
+                    lastLayerInfo.GetHPadOff(),
+                    lastLayerInfo.GetWPadOff());///the remained three parameter does not matter
 
     PrintProcess("[this layer] loading kernel");
     #ifdef GENERATE_DATA
@@ -147,14 +151,10 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
     sys.CalcDFUDRAMAccess(thisLayer);
     #endif // ANALYZE
 
-    #ifndef NDEBUG
     #ifdef PRINT_TO_FILE
     PrintProcess("[systolic array] printing weight input");
     sys.PrintTransedW(prefix);
     #endif // PRINT_TO_FILE
-    PrintProcess("\t[compiler] cleaning WTrans");
-    sys.ClearWTrans();
-    #endif // NDEBUG
 
     #ifdef PRINT_TO_FILE
     PrintProcess("[systolic array] printing feature input");
@@ -164,8 +164,10 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
     #endif // PRINT_TO_FILE
 
     #ifdef REFORMED
+    #ifdef NDEBUG
     PrintProcess("\t[compiler] cleaning XTrans");
     sys.ClearXTrans();
+    #endif // NDEBUG
     #endif // REFORMED
 
     PrintProcess("\t[compiler] cleaning Output");
@@ -214,16 +216,16 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
     rua.ClearXIn();
     PrintProcess("\t[compiler] cleaning last layer");
     lastLayer.Clean();
-    #ifndef REFORMED
     #ifndef NDEBUG
+    #ifndef REFORMED
     PrintProcess("[RU array] checking the homogeneity of translated feature and location");
     assert(rua.CheckXLDataHomo());
+    #endif // REFORMED
     PrintProcess("[RU array] checking if the translated feature and location match");
     assert(sys.CheckRUXL());
     #endif // NDEBUG
     PrintProcess("\t[compiler] cleaning XTrans");
     sys.ClearXTrans();
-    #endif // REFORMED
     #endif // TRANS_DATA
 
     #ifdef ANALYZE
@@ -242,16 +244,17 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
     return;
 }
 
+#ifdef GENERATE_DATA
 void Analyze::AnalyzeAlexNet(){
     this->totalCyc = 0;
 
     LayerDimension layer0(227,227,  3);
     LayerDimension layer1( 55, 55, 96);
     LayerDimension layer2( 27, 27, 96);
-    LayerDimension layer3( 27, 27,256);
+    LayerDimension layer3( 27, 27,256,SAME_PAD,1,1);
     LayerDimension layer4( 13, 13,256);
-    LayerDimension layer5( 13, 13,384);
-    LayerDimension layer6( 13, 13,256);
+    LayerDimension layer5( 13, 13,384,SAME_PAD,1,1);
+    LayerDimension layer6( 13, 13,256,SAME_PAD,1,1);
 
     double WorkLoad=0;
 
@@ -324,72 +327,21 @@ void Analyze::AnalyzeAlexNet(){
     #endif // ANALYZE
 }
 
-void Analyze::AnalyzeRealAlexNet(std::string path){
-    this->totalCyc = 0;
-
-    LayerDimension layer0(227,227,  3);
-    LayerDimension layer1( 55, 55, 96);
-    LayerDimension layer2( 27, 27, 96);
-    LayerDimension layer3( 27, 27,256);
-    LayerDimension layer4( 13, 13,256);
-    LayerDimension layer5( 13, 13,384);
-    LayerDimension layer6( 13, 13,256);
-
-    double WorkLoad=0;
-
-    std::cout<<"#############"<<std::endl
-             <<"##  conv1  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer0.toString()<<"->"<<layer1.toString()<<std::endl;
-    analyze(layer0,layer1,11,11,4,4,path+"./conv_0/","weights","input_features","");
-    WorkLoad += layer1.GetWorkLoad(layer0,11,11);
-
-    std::cout<<"#############"<<std::endl
-             <<"##  conv2  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer2.toString()<<"->"<<layer3.toString()<<"\n"<<std::endl;
-    analyze(layer2,layer3, 5, 5,1,1,path+"./conv_1/");
-    WorkLoad += layer3.GetWorkLoad(layer2,5,5);
-
-    std::cout<<"#############"<<std::endl
-             <<"##  conv3  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer4.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
-    analyze(layer4,layer5, 3, 3,1,1,path+"./conv_2/");
-    WorkLoad += layer5.GetWorkLoad(layer4,3,3);
-
-    std::cout<<"#############"<<std::endl
-             <<"##  conv4  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
-    analyze(layer5,layer5, 3, 3,1,1,path+"./conv_3/");
-    WorkLoad += layer5.GetWorkLoad(layer5,3,3);
-
-    std::cout<<"#############"<<std::endl
-             <<"##  conv5  ##"<<std::endl
-             <<"#############"<<std::endl;
-    std::cout<<layer5.toString()<<"->"<<layer6.toString()<<"\n"<<std::endl;
-    analyze(layer5,layer6, 3, 3,1,1,path+"./conv_4/");
-    WorkLoad += layer6.GetWorkLoad(layer5,3,3);
-    return;
-}
-
 void Analyze::AnalyzeVGG16(){
     this->totalCyc = 0;
 
-    LayerDimension layer0(224,224,  3);
-    LayerDimension layer1(224,224, 64);
-    LayerDimension layer2(112,112, 64);
-    LayerDimension layer3(112,112,128);
-    LayerDimension layer4( 56, 56,128);
-    LayerDimension layer5( 56, 56,256);
-    LayerDimension layer6( 28, 28,256);
-    LayerDimension layer7( 28, 28,512);
-    LayerDimension layer8( 14, 14,512);
+    LayerDimension layer0(224,224,  3,ZERO_PAD,1,1);
+    LayerDimension layer1(224,224, 64,ZERO_PAD,1,1);
+    LayerDimension layer2(112,112, 64,ZERO_PAD,1,1);
+    LayerDimension layer3(112,112,128,ZERO_PAD,1,1);
+    LayerDimension layer4( 56, 56,128,ZERO_PAD,1,1);
+    LayerDimension layer5( 56, 56,256,ZERO_PAD,1,1);
+    LayerDimension layer6( 28, 28,256,ZERO_PAD,1,1);
+    LayerDimension layer7( 28, 28,512,ZERO_PAD,1,1);
+    LayerDimension layer8( 14, 14,512,ZERO_PAD,1,1);
 
     double WorkLoad=0;
 
-    #ifdef GENERATE_DATA
     this->MKDir("./VGG16");
     this->MKLayerDir("./VGG16","conv1_1");
     this->MKLayerDir("./VGG16","conv1_2");
@@ -404,7 +356,6 @@ void Analyze::AnalyzeVGG16(){
     this->MKLayerDir("./VGG16","conv5_1");
     this->MKLayerDir("./VGG16","conv5_2");
     this->MKLayerDir("./VGG16","conv5_3");
-    #endif // GENERATE_DATA
 
     std::cout<<"###############"<<std::endl
              <<"##  conv1_1  ##"<<std::endl
@@ -520,114 +471,6 @@ void Analyze::AnalyzeVGG16(){
             <<" Tops ##"
             <<endl;
     #endif // ANALYZE
-    return;
-}
-
-void Analyze::AnalyzeRealVGG16(std::string path){
-    this->totalCyc = 0;
-
-    LayerDimension layer0(224,224,  3,ZERO_PAD);
-    LayerDimension layer1(224,224, 64,ZERO_PAD);
-    LayerDimension layer2(112,112, 64,ZERO_PAD);
-    LayerDimension layer3(112,112,128,ZERO_PAD);
-    LayerDimension layer4( 56, 56,128,ZERO_PAD);
-    LayerDimension layer5( 56, 56,256,ZERO_PAD);
-    LayerDimension layer6( 28, 28,256,ZERO_PAD);
-    LayerDimension layer7( 28, 28,512,ZERO_PAD);
-    LayerDimension layer8( 14, 14,512,ZERO_PAD);
-
-    double WorkLoad=0;
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv1_1  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer0.toString()<<"->"<<layer1.toString()<<std::endl;
-    analyze(layer0,layer1,3,3,1,1,path+"./conv_0/");
-    WorkLoad += layer1.GetWorkLoad(layer0,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv1_2  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer1.toString()<<"->"<<layer1.toString()<<"\n"<<endl;
-    analyze(layer1,layer1,3,3,1,1,path+"./conv_1/");
-    WorkLoad += layer1.GetWorkLoad(layer1,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv2_1  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer2.toString()<<"->"<<layer3.toString()<<"\n"<<endl;
-    analyze(layer2,layer3,3,3,1,1,path+"./conv_2/");
-    WorkLoad += layer3.GetWorkLoad(layer2,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv2_2  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer3.toString()<<"->"<<layer3.toString()<<"\n"<<endl;
-    analyze(layer3,layer3,3,3,1,1,path+"./conv_3/");
-    WorkLoad += layer3.GetWorkLoad(layer3,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv3_1  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer4.toString()<<"->"<<layer5.toString()<<"\n"<<endl;
-    analyze(layer4,layer5,3,3,1,1,path+"./conv_4/");
-    WorkLoad += layer5.GetWorkLoad(layer4,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv3_2  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<endl;
-    analyze(layer5,layer5,3,3,1,1,path+"./conv_5/");
-    WorkLoad += layer5.GetWorkLoad(layer5,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv3_3  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<endl;
-    analyze(layer5,layer5,3,3,1,1,path+"./conv_6/");
-    WorkLoad += layer5.GetWorkLoad(layer5,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv4_1  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer6.toString()<<"->"<<layer7.toString()<<"\n"<<endl;
-    analyze(layer6,layer7,3,3,1,1,path+"./conv_7/");
-    WorkLoad += layer7.GetWorkLoad(layer6,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv4_2  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer7.toString()<<"->"<<layer7.toString()<<"\n"<<endl;
-    analyze(layer7,layer7,3,3,1,1,path+"./conv_8/");
-    WorkLoad += layer7.GetWorkLoad(layer7,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv4_3  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer7.toString()<<"->"<<layer7.toString()<<"\n"<<endl;
-    analyze(layer7,layer7,3,3,1,1,path+"./conv_9/");
-    WorkLoad += layer7.GetWorkLoad(layer7,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv5_1  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer8.toString()<<"->"<<layer8.toString()<<"\n"<<endl;
-    analyze(layer8,layer8,3,3,1,1,path+"./conv_10/");
-    WorkLoad += layer8.GetWorkLoad(layer8,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv5_2  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer8.toString()<<"->"<<layer8.toString()<<"\n"<<endl;
-    analyze(layer8,layer8,3,3,1,1,path+"./conv_11/");
-    WorkLoad += layer8.GetWorkLoad(layer8,3,3);
-
-    std::cout<<"###############"<<std::endl
-             <<"##  conv5_3  ##"<<std::endl
-             <<"###############"<<std::endl
-             <<layer8.toString()<<"->"<<layer8.toString()<<"\n"<<endl;
-    analyze(layer8,layer8,3,3,1,1,path+"./conv_12/");
-    WorkLoad += layer8.GetWorkLoad(layer8,3,3);
     return;
 }
 
@@ -797,6 +640,179 @@ void Analyze::AnalyzeVGG19(){
             <<endl;
     #endif // ANALYZE
 }
+#else
+void Analyze::AnalyzeRealAlexNet(std::string path){
+    this->totalCyc = 0;
+
+    LayerDimension layer0(224,224,  3);
+    LayerDimension layer1( 55, 55, 64,ZERO_PAD,2,2);
+    LayerDimension layer2( 27, 27, 64,ZERO_PAD);
+    LayerDimension layer3( 27, 27,192,ZERO_PAD,2,2);
+    LayerDimension layer4( 13, 13,192,ZERO_PAD);
+    LayerDimension layer5( 13, 13,384,ZERO_PAD,1,1);
+    LayerDimension layer6( 13, 13,256,ZERO_PAD,1,1);
+
+    double WorkLoad=0;
+
+    std::cout<<"#############"<<std::endl
+             <<"##  conv1  ##"<<std::endl
+             <<"#############"<<std::endl;
+    std::cout<<layer0.toString()<<"->"<<layer1.toString()<<std::endl;
+    analyze(layer0,layer1,11,11,4,4,path+"./conv_0/");
+    WorkLoad += layer1.GetWorkLoad(layer0,11,11);
+
+    std::cout<<"#############"<<std::endl
+             <<"##  conv2  ##"<<std::endl
+             <<"#############"<<std::endl;
+    std::cout<<layer2.toString()<<"->"<<layer3.toString()<<"\n"<<std::endl;
+    analyze(layer2,layer3, 5, 5,1,1,path+"./conv_1/");
+    WorkLoad += layer3.GetWorkLoad(layer2,5,5);
+//
+    std::cout<<"#############"<<std::endl
+             <<"##  conv3  ##"<<std::endl
+             <<"#############"<<std::endl;
+    std::cout<<layer4.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
+    analyze(layer4,layer5, 3, 3,1,1,path+"./conv_2/");
+    WorkLoad += layer5.GetWorkLoad(layer4,3,3);
+//
+    std::cout<<"#############"<<std::endl
+             <<"##  conv4  ##"<<std::endl
+             <<"#############"<<std::endl;
+    std::cout<<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<std::endl;
+    analyze(layer5,layer6, 3, 3,1,1,path+"./conv_3/");
+    WorkLoad += layer6.GetWorkLoad(layer5,3,3);
+//
+    std::cout<<"#############"<<std::endl
+             <<"##  conv5  ##"<<std::endl
+             <<"#############"<<std::endl;
+    std::cout<<layer5.toString()<<"->"<<layer6.toString()<<"\n"<<std::endl;
+    analyze(layer6,layer6, 3, 3,1,1,path+"./conv_4/");
+    WorkLoad += layer6.GetWorkLoad(layer6,3,3);
+    return;
+}
+
+void Analyze::AnalyzeRealVGG16(std::string path){
+    this->totalCyc = 0;
+
+    LayerDimension layer0(224,224,  3,ZERO_PAD,1,1);
+    LayerDimension layer1(224,224, 64,ZERO_PAD,1,1);
+    LayerDimension layer2(112,112, 64,ZERO_PAD,1,1);
+    LayerDimension layer3(112,112,128,ZERO_PAD,1,1);
+    LayerDimension layer4( 56, 56,128,ZERO_PAD,1,1);
+    LayerDimension layer5( 56, 56,256,ZERO_PAD,1,1);
+    LayerDimension layer6( 28, 28,256,ZERO_PAD,1,1);
+    LayerDimension layer7( 28, 28,512,ZERO_PAD,1,1);
+    LayerDimension layer8( 14, 14,512,ZERO_PAD,1,1);
+
+    double WorkLoad=0;
+
+    this->MKLayerDir(path,"conv_0");
+    this->MKLayerDir(path,"conv_1");
+    this->MKLayerDir(path,"conv_2");
+    this->MKLayerDir(path,"conv_3");
+    this->MKLayerDir(path,"conv_4");
+    this->MKLayerDir(path,"conv_5");
+    this->MKLayerDir(path,"conv_6");
+    this->MKLayerDir(path,"conv_7");
+    this->MKLayerDir(path,"conv_8");
+    this->MKLayerDir(path,"conv_9");
+    this->MKLayerDir(path,"conv_10");
+    this->MKLayerDir(path,"conv_11");
+    this->MKLayerDir(path,"conv_12");
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv1_1  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer0.toString()<<"->"<<layer1.toString()<<std::endl;
+    analyze(layer0,layer1,3,3,1,1,path+"./conv_0/");
+    WorkLoad += layer1.GetWorkLoad(layer0,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv1_2  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer1.toString()<<"->"<<layer1.toString()<<"\n"<<endl;
+    analyze(layer1,layer1,3,3,1,1,path+"./conv_1/");
+    WorkLoad += layer1.GetWorkLoad(layer1,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv2_1  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer2.toString()<<"->"<<layer3.toString()<<"\n"<<endl;
+    analyze(layer2,layer3,3,3,1,1,path+"./conv_2/");
+    WorkLoad += layer3.GetWorkLoad(layer2,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv2_2  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer3.toString()<<"->"<<layer3.toString()<<"\n"<<endl;
+    analyze(layer3,layer3,3,3,1,1,path+"./conv_3/");
+    WorkLoad += layer3.GetWorkLoad(layer3,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv3_1  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer4.toString()<<"->"<<layer5.toString()<<"\n"<<endl;
+    analyze(layer4,layer5,3,3,1,1,path+"./conv_4/");
+    WorkLoad += layer5.GetWorkLoad(layer4,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv3_2  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<endl;
+    analyze(layer5,layer5,3,3,1,1,path+"./conv_5/");
+    WorkLoad += layer5.GetWorkLoad(layer5,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv3_3  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer5.toString()<<"->"<<layer5.toString()<<"\n"<<endl;
+    analyze(layer5,layer5,3,3,1,1,path+"./conv_6/");
+    WorkLoad += layer5.GetWorkLoad(layer5,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv4_1  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer6.toString()<<"->"<<layer7.toString()<<"\n"<<endl;
+    analyze(layer6,layer7,3,3,1,1,path+"./conv_7/");
+    WorkLoad += layer7.GetWorkLoad(layer6,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv4_2  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer7.toString()<<"->"<<layer7.toString()<<"\n"<<endl;
+    analyze(layer7,layer7,3,3,1,1,path+"./conv_8/");
+    WorkLoad += layer7.GetWorkLoad(layer7,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv4_3  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer7.toString()<<"->"<<layer7.toString()<<"\n"<<endl;
+    analyze(layer7,layer7,3,3,1,1,path+"./conv_9/");
+    WorkLoad += layer7.GetWorkLoad(layer7,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv5_1  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer8.toString()<<"->"<<layer8.toString()<<"\n"<<endl;
+    analyze(layer8,layer8,3,3,1,1,path+"./conv_10/");
+    WorkLoad += layer8.GetWorkLoad(layer8,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv5_2  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer8.toString()<<"->"<<layer8.toString()<<"\n"<<endl;
+    analyze(layer8,layer8,3,3,1,1,path+"./conv_11/");
+    WorkLoad += layer8.GetWorkLoad(layer8,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv5_3  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer8.toString()<<"->"<<layer8.toString()<<"\n"<<endl;
+    analyze(layer8,layer8,3,3,1,1,path+"./conv_12/");
+    WorkLoad += layer8.GetWorkLoad(layer8,3,3);
+    return;
+}
+#endif // GENERATE_DATA
 
 #ifdef GENERATE_DATA
 void Analyze::GenKernel(int kN,int kH,int kW,int kD,int zeroRatio,int _16bitRatio,const string& prefix){

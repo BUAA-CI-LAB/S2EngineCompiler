@@ -131,16 +131,27 @@ public:
         SFIFO::AddFeature(feature);
         return;
     }
-
+    inline void AddCtrl(enum FIFO_CTRL ctrl){
+        assert(!this->hasSorted);
+        this->isZeroGroup.push_back(false);
+        SFIFO::AddCtrl(ctrl);
+        return;
+    }
     inline void AddZeroGroup(){
         assert(!this->hasSorted);
         this->isZeroGroup.push_back(true);
-        SFIFO::AddFeature(0);
+        SFIFO::AddFeature(-1);
         return;
+    }
+
+    inline bool IsZeroGroup(uint32_t idx) const{
+        assert(idx>=0 && idx<this->data.size());
+        return this->isZeroGroup[idx];
     }
 
     inline uint32_t GetGroupNum() const{
         assert(this->groupNumHasCalced
+            && this->isZeroGroup.size() == this->data.size()
             && this->data.size() > this->groupNum
             &&!this->data[this->groupNum  ].IsCtrl()
             && this->data[this->groupNum+1].IsCtrl());
@@ -203,8 +214,13 @@ public:
         assert(idx>=0 && idx<this->data.size() && !this->hasSorted);
         return this->data[idx].GetFeature().IsEOG();
     }
+    inline void AddZeroFeatureGroup(){
+        this->data.emplace_back(SparseDataInFIFO<XTransIn::FeatureType>(0,FEATURE_FILL_ZERO_POSITION,true));
+        return;
+    }
     inline void AddFeature(const SparseData<XTransIn::FeatureType>& feature,bool EOG){
         this->data.emplace_back(SparseDataInFIFO<XTransIn::FeatureType>(feature,EOG));
+        return;
     }
     inline void PrintHFTo(std::ofstream& ofs) const {
         assert(!(!ofs) && !this->hasSorted);
