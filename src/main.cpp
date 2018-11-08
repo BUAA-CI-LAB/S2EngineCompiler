@@ -18,7 +18,7 @@ int main(){
 //    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01688243.jpg/");
 //    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01735189.jpg/");
 
-    Analyze().AnalyzeRealResNet18("./n01601694.jpg/");
+//    Analyze().AnalyzeRealAlexNet("./16bits/n01601694.jpg/");
 //    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01601694.jpg/");
 //    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01688243.jpg/");
 //    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01735189.jpg/");

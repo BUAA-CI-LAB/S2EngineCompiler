@@ -12,8 +12,10 @@ private:
     }
 public:
     static inline bool Is16Bit(XTransIn::FeatureType number){
+        #ifndef SIMULATE_16_BIT
         assert(((number>>(2*WEIGHT_BIT_WIDTH)) == -1)
              ||((number>>(2*WEIGHT_BIT_WIDTH)) ==  0));
+        #endif // SIMULATE_16_BIT
 
         if (((((number>>WEIGHT_BIT_WIDTH)&((1<<WEIGHT_BIT_WIDTH)-1)) != ((1<<WEIGHT_BIT_WIDTH)-1))
           && (((number>>WEIGHT_BIT_WIDTH)&((1<<WEIGHT_BIT_WIDTH)-1)) != 0   ))
@@ -21,6 +23,26 @@ public:
           ||((((number>>WEIGHT_BIT_WIDTH)&((1<<WEIGHT_BIT_WIDTH)-1)) == 0   ) && ((number & (1<<(WEIGHT_BIT_WIDTH-1)))!=0)))
             return true;
         return false;
+    }
+    static inline XTransIn::FeatureType Gen16BitFeature(){
+        constexpr XTransIn::FeatureType
+                  tempValue = (1<<(2*WEIGHT_BIT_WIDTH-5)),
+            additionalValue = (1<<   WEIGHT_BIT_WIDTH   );
+
+        if (rand()%2==0)
+            return (( (rand()%(tempValue-1))+1) + additionalValue);
+        else
+            return ((-(rand()% tempValue   )-1) - additionalValue);
+    }
+    static inline WTransIn::WeightType Gen16BitWeight(){
+        constexpr WTransIn::WeightType
+                  tempValue = (1<<(2*WEIGHT_BIT_WIDTH-5)),
+            additionalValue = (1<<   WEIGHT_BIT_WIDTH   );
+
+        if (rand()%2==0)
+            return (( (rand()%(tempValue-1))+1) + additionalValue);
+        else
+            return ((-(rand()% tempValue   )-1) - additionalValue);
     }
     static inline XTransIn::FeatureType Add(XTransIn::FeatureType a,XTransIn::FeatureType b){
         if (MyMath::IsPos(a)&&MyMath::IsPos(b)){

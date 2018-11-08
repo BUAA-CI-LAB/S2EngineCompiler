@@ -278,7 +278,11 @@ bool Layer::Compute(const Layer& lastLayer){
                 #ifdef GENERATE_DATA
                 tempFeature = 0;
                 #else
+                #ifndef SIMULATE_16_BIT
                 tempFeature = this->bias[k];
+                #else
+                tempFeature = 0;
+                #endif // SIMULATE_16_BIT
                 #endif // GENERATE_DATA
                 for (int w=-halfW,kw=0;w<=halfW;w++,kw++){
                     for (int h=-halfH,kh=0;h<=halfH;h++,kh++){
@@ -320,6 +324,7 @@ bool Layer::Compute(const Layer& lastLayer){
                 #ifdef GENERATE_DATA
                 this->feature[k][y][x] = tempFeature;
                 #else
+                #ifndef SIMULATE_16_BIT
                 #ifdef ROUND_IN
                 if (std::abs(this->feature[k][y][x] - tempFeature)>std::abs(this->feature[k][y][x])/10000){
                 #else
@@ -331,6 +336,9 @@ bool Layer::Compute(const Layer& lastLayer){
                     return false;
                 }
                 this->feature[k][y][x] -= this->bias[k];
+                #else
+                this->feature[k][y][x] = tempFeature;
+                #endif // SIMULATE_16_BIT
                 #endif // GENERATE_DATA
             }
     #ifdef GENERATE_DATA
@@ -453,6 +461,10 @@ void Layer::LoadKernel(const string& prefix,int actD,int D){
             for (int i=0;i<actD;i++){
                 double value;
                 ifs >> value;
+                #ifdef SIMULATE_16_BIT
+                if (MyMath::Is16Bit((WTransIn::WeightType)value))
+                    value = MyMath::Gen16BitWeight();
+                #endif // SIMULATE_16_BIT
                 this-> kernel[k].AddValue(c*D + i,(WTransIn::WeightType)value);
                 this->pattern[k][c*D + i] = (((WTransIn::WeightType)value)!=0);
             }
@@ -550,6 +562,10 @@ void Layer::LoadFeature(const string& prefix,int actD,int D, const string& fileN
                 XTransIn::FeatureType tempFeature;
                 #endif // XUCHENG_PROTOCOL
                 ifs>>tempFeature;
+                #ifdef SIMULATE_16_BIT
+                if (MyMath::Is16Bit((XTransIn::FeatureType)tempFeature))
+                    tempFeature = MyMath::Gen16BitFeature();
+                #endif // SIMULATE_16_BIT
                 #ifdef XUCHENG_MISTAKE
                 this->feature[k][h][w] = (XTransIn::FeatureType)tempFeature;
                 #else

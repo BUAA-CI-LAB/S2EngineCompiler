@@ -50,7 +50,7 @@ struct str_list{
 
 class XTransIn{
 public:
-    typedef int64_t FeatureType;
+    typedef int32_t FeatureType;
 
 private:
     FeatureType value;
@@ -104,7 +104,7 @@ public:
 
 class WTransIn{
 public:
-    typedef int64_t WeightType;
+    typedef int32_t WeightType;
 
 private:
     WeightType weight;
