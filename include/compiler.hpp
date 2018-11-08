@@ -28,10 +28,22 @@
 #define TRANS_FILE_TYPE string(".txt")
 #define SA_XIN_DATA_FILE_PATH  "SA_XIn_Data.txt"
 #define SA_WIN_DATA_FILE_PATH  "SA_WIn_Data.txt"
-#define          SA_XIN_TRANS_FILE_PATH_PREFIX string("./transed/SA_XIn/SA_XIn_Trans_")
-#define REFORMED_SA_XIN_TRANS_FILE_PATH_PREFIX string("./transed/SA_XIn_reformed/SA_XIn_")
-#define SA_WIN_TRANS_FILE_PATH_PREFIX string("./transed/SA_WIn/SA_WIn_Trans_")
-#define SA_OUTPUT_FILE_PATH_PREFIX string("./transed/SA_Out/SA_Output_")
+#define          SA_XIN_TRANS_FILE_PATH_PREFIX (std::string("./transed")\
+                                              + std::string("_") + std::to_string(SYS_ROW)\
+                                              + std::string("_") + std::to_string(SYS_COLUM)\
+                                              + std::string("/SA_XIn/SA_XIn_Trans_"))
+#define REFORMED_SA_XIN_TRANS_FILE_PATH_PREFIX (std::string("./transed")\
+                                              + std::string("_") + std::to_string(SYS_ROW)\
+                                              + std::string("_") + std::to_string(SYS_COLUM)\
+                                              + std::string("/SA_XIn_reformed/SA_XIn_"))
+#define SA_WIN_TRANS_FILE_PATH_PREFIX (std::string("./transed")\
+                                     + std::string("_") + std::to_string(SYS_ROW)\
+                                     + std::string("_") + std::to_string(SYS_COLUM)\
+                                     + std::string("/SA_WIn/SA_WIn_Trans_"))
+#define SA_OUTPUT_FILE_PATH_PREFIX (std::string("./transed")\
+                                  + std::string("_") + std::to_string(SYS_ROW)\
+                                  + std::string("_") + std::to_string(SYS_COLUM)\
+                                  + std::string("/SA_Out/SA_Output_"))
 #define SA_UPPER_ANAL_OUT_FILE_PATH "SA_WIN_ANAL.txt"
 
 #define SA_XOUT_DATA_FILE_PATH "SA_XOut_Data.txt"
@@ -39,9 +51,18 @@
 #define RU_XIN_FILE_PATH   "RU_XIN.txt"
 #define RU_LIN_FILE_PATH   "RU_LIN.txt"
 
-#define RU_LDATA_FILE_PATH_PREFIX string("./transed/RU_LIn/RU_LIn_")
-#define RU_XDATA_FILE_PATH_PREFIX string("./transed/RU_XIn/RU_XIn_")
-#define RU_X4SA_FILE_PATH_PREFIX string("./transed/RU_XOut/RU_XOut_")
+#define RU_LDATA_FILE_PATH_PREFIX (std::string("./transed")\
+                                 + std::string("_") + std::to_string(SYS_ROW)\
+                                 + std::string("_") + std::to_string(SYS_COLUM)\
+                                 + std::string("/RU_LIn/RU_LIn_"))
+#define RU_XDATA_FILE_PATH_PREFIX (std::string("./transed")\
+                                 + std::string("_") + std::to_string(SYS_ROW)\
+                                 + std::string("_") + std::to_string(SYS_COLUM)\
+                                 + std::string("/RU_XIn/RU_XIn_"))
+#define RU_X4SA_FILE_PATH_PREFIX (std::string("./transed")\
+                                + std::string("_") + std::to_string(SYS_ROW)\
+                                + std::string("_") + std::to_string(SYS_COLUM)\
+                                + std::string("/RU_XOut/RU_XOut_"))
 #define RU_LOC_ANAL_OUT_FILE_PATH "RU_LIN_ANAL.txt"
 
 #define RESHAPED_G_FILE_PATH "reshapedG.txt"
@@ -79,7 +100,7 @@
 
 #define PRINT_PROCESS
 
-#define GENERATE_DATA
+//#define GENERATE_DATA
 
 #define XUCHENG_PROTOCOL
 

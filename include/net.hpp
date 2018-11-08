@@ -33,9 +33,14 @@ private:
     vector<WTransIn::WeightType>  reordered;
     vector<WTransIn::WeightType>  initial;
 
+    const int kernelSize;
+    const int  extraSize;
+
 public:
-    Kernel(int kernelSize):initial(kernelSize){
-        assert(kernelSize >= MINIMA_WEIGHT_INTERVAL);
+    Kernel(int kernelSize)
+        :  initial(kernelSize),
+        kernelSize(kernelSize),
+         extraSize(MINIMA_WEIGHT_INTERVAL - kernelSize){
         assert(kernelSize % GROUP_SIZE == 0);
         this->reordered.clear();
         return;
@@ -48,9 +53,12 @@ public:
     void PrintReorderedTo(FILE *fp)const;
     #ifndef REFORMED
     void PrintReorderedTo(vector<WTransIn>& wTrans)const;
+    void FillZero(vector<WTransIn>& wTrans) const;
     #else
     void PrintReorderedTo(vector<SparseDataInFIFO<WTransIn> >& wTrans,const vector<vector<SparseLoc> >& kernelLoc)const;
+    void FillZero(vector<SparseDataInFIFO<WTransIn> >& wTrans) const;
     #endif // REFORMED
+
 
     inline void AddValue(uint32_t idx,int value){
         assert(idx>=0 && idx<this->initial.size());
@@ -67,6 +75,14 @@ public:
     inline int GetInitialSize() const{
         return this->initial.size();
     }
+    inline uint32_t GetExtraGroup() const{
+        if (this->extraSize <= 0)
+            return 0;
+        return ceil(this->extraSize * 1.0 /(GROUP_SIZE - 1));
+    }
+    inline int GetExtraSize() const{
+        return this->extraSize;
+    }
 };
 
 class Layer{
@@ -76,6 +92,7 @@ private:
     const enum LAYER_TYPE type;
     const enum PAD_TYPE padding;
     const uint8_t hPadOff,wPadOff;
+    const bool hasBias;
     const int lH,lW;
     const int kN,kH,kW,kD;
     const int sH,sW;
@@ -129,26 +146,26 @@ private:
 	Layer(const Layer &);
 	Layer &operator=(const Layer &);
 
-	inline uint32_t FeatureGroupIdx(int groupPerLine,uint32_t h,uint32_t w,uint32_t g){
+	inline uint32_t FeatureGroupIdx(int groupPerLine,uint32_t h,uint32_t w,uint32_t g) const{
 	    return (h * this->lW + w ) * groupPerLine + g;
 	}
 
-    inline uint32_t KernelGroupIdx(uint32_t groupPerLine,uint32_t h,uint32_t w,uint32_t groupInLine){
+    inline uint32_t KernelGroupIdx(uint32_t groupPerLine,uint32_t h,uint32_t w,uint32_t groupInLine) const{
         assert(this->kD%GROUP_SIZE==0);
 	    return (w * this->kH + h) * groupPerLine + groupInLine;
 	}
 
-    inline int KernelGroupIdxToH(int groupIdx,int groupPerLine,int nextLayerKH){
+    inline int KernelGroupIdxToH(int groupIdx,int groupPerLine,int nextLayerKH) const{
         assert(this->kN%GROUP_SIZE==0);
         return (groupIdx / groupPerLine) % nextLayerKH - (nextLayerKH / 2);
 	}
 
-    inline int KernelGroupIdxToW(int groupIdx,int groupPerLine,int nextLayerKH,int nextLayerKW){
+    inline int KernelGroupIdxToW(int groupIdx,int groupPerLine,int nextLayerKH,int nextLayerKW) const{
         assert(this->kN%GROUP_SIZE==0);
         return (groupIdx / groupPerLine) / nextLayerKH - (nextLayerKW / 2);
 	}
 
-    inline int KernelGroupIdxToK(int groupIdx,int groupPerLine){
+    inline int KernelGroupIdxToK(int groupIdx,int groupPerLine) const{
         assert(this->kN%GROUP_SIZE==0);
         return (groupIdx % groupPerLine);
 	}
@@ -158,12 +175,14 @@ public:
           int kH,int kW,int sH,int sW,int kD,
           enum PAD_TYPE padding,
           uint8_t hPadOff,
-          uint8_t wPadOff)
+          uint8_t wPadOff,
+          bool hasBias)
           : idx(Layer::idxCounter++),
             type(CONV_LAYER),
             padding(padding),
             hPadOff(hPadOff),
             wPadOff(wPadOff),
+            hasBias(hasBias),
             lH(lH),lW(lW),
             kN(kN),kH(kH),kW(kW),kD(kD),
             sH(sH),sW(sW),
@@ -254,6 +273,16 @@ public:
         }
         assert(k>=0 && k<this->kN);
         return this->kernel[k].GetReorderedSize();
+    }
+
+    inline uint32_t GetExtraGroup() const{
+        assert(this->kernel.size()>0);
+        return this->kernel[0].GetExtraGroup();
+    }
+
+    inline int GetExtraSize() const{
+        assert(this->kernel.size()>0);
+        return this->kernel[0].GetExtraSize();
     }
 
     inline int getKernelGroupNum() const{
@@ -361,9 +390,9 @@ public:
      **/
 
     #ifndef REFORMED
-    void MatchXTo(int x,int y,int k,Layer& nextLayer,vector<XTransIn>& xTrans);
+    void MatchXTo(int x,int y,int k,const Layer& nextLayer,vector<XTransIn>& xTrans) const;
     #else
-    void MatchXTo(int x,int y,int k,Layer& nextLayer,vector<SparseDataInFIFO<XTransIn::FeatureType> >& xTrans);
+    void MatchXTo(int x,int y,int k,const Layer& nextLayer,vector<SparseDataInFIFO<XTransIn::FeatureType> >& xTrans) const;
     #endif // REFORMED
 
     inline bool FeatureEqual(int x,int y,int k,XTransIn::FeatureType t) const{
@@ -446,6 +475,8 @@ private:
     const uint8_t hPadOff;
     const uint8_t wPadOff;
 
+    const bool hasBias;
+
     const uint8_t featureSparse;
     const uint8_t  kernelSparse;
 
@@ -454,11 +485,13 @@ public:
                    enum PAD_TYPE padding = SAME_PAD,
                    uint8_t hPadOff = 0,
                    uint8_t wPadOff = 0,
+                   bool    hasBias = true,
                    uint8_t featureSparse = FEATURE_ZERO_PERCENT,
                    uint8_t  kernelSparse = KERNEL_SPARSE_RATE)
         :h(h),w(w),d((d+GROUP_SIZE-1)/GROUP_SIZE),actD(d),padding(padding),
                hPadOff(hPadOff),
                wPadOff(wPadOff),
+               hasBias(hasBias),
          featureSparse(featureSparse),
           kernelSparse( kernelSparse){
         assert(this->featureSparse>=0 && this->featureSparse<=100);
@@ -475,6 +508,8 @@ public:
 
     inline uint8_t GetHPadOff() const{return this->hPadOff;}
     inline uint8_t GetWPadOff() const{return this->wPadOff;}
+
+    inline bool HasBias() const{return this->hasBias;}
 
     inline enum PAD_TYPE GetPadding() const{
         return this->padding;

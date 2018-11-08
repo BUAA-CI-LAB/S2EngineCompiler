@@ -80,22 +80,27 @@ private:
     }
     inline void MKLayerDir(const string& prefix,
                            const string& layerName) const{
-        this->MKDir(prefix+"/"+layerName            );
         #ifdef GENERATE_DATA
+        this->MKDir(prefix+"/"+layerName            );
         this->MKDir(prefix+"/"+layerName+"/data"   );
         #endif // GENERATE_DATA
-        this->MKDir(prefix+"/"+layerName+"/transed");
+
+        const string transFileName =
+            "/transed_"+std::to_string(SYS_ROW)
+                   +"_"+std::to_string(SYS_COLUM);
+
+        this->MKDir(prefix+"/"+layerName+transFileName);
         #ifdef REFORMED
-        this->MKDir(prefix+"/"+layerName+"/transed/SA_XIn_reformed/");
+        this->MKDir(prefix+"/"+layerName+transFileName+"/SA_XIn_reformed/");
         #else
-        this->MKDir(prefix+"/"+layerName+"/transed/SA_XIn/");
+        this->MKDir(prefix+"/"+layerName+transFileName+"/SA_XIn/");
         #endif // REFORMED
-        this->MKDir(prefix+"/"+layerName+"/transed/SA_WIn/");
-        this->MKDir(prefix+"/"+layerName+"/transed/SA_Out/");
-        this->MKDir(prefix+"/"+layerName+"/transed/RU_XIn/");
+        this->MKDir(prefix+"/"+layerName+transFileName+"/SA_WIn/");
+        this->MKDir(prefix+"/"+layerName+transFileName+"/SA_Out/");
+        this->MKDir(prefix+"/"+layerName+transFileName+"/RU_XIn/");
         #ifndef REFORMED
-        this->MKDir(prefix+"/"+layerName+"/transed/RU_LIn/");
-        this->MKDir(prefix+"/"+layerName+"/transed/RU_XOut/");
+        this->MKDir(prefix+"/"+layerName+transFileName+"/RU_LIn/");
+        this->MKDir(prefix+"/"+layerName+transFileName+"/RU_XOut/");
         #endif // REFORMED
         return;
     }
@@ -178,9 +183,10 @@ public:
     void AnalyzeVGG16();
     void AnalyzeVGG19();
     #else
-    void AnalyzeRealAlexNet(std::string path);
-    void AnalyzeRealVGG16  (std::string path);
-    void AnalyzeRealVGG19  (std::string path);
+    void AnalyzeRealResNet18(std::string path);
+    void AnalyzeRealAlexNet (std::string path);
+    void AnalyzeRealVGG16   (std::string path);
+    void AnalyzeRealVGG19   (std::string path);
     #endif // GENERATE_DATA
 
     void GenPEArrayTestData(

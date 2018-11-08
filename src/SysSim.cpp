@@ -247,7 +247,7 @@ void Systolic::TransWIn(const Layer& layer){
             #endif // PRINT_TRANS_W_IN_PROCESS
             this->WTran[g][w].reserve(workLoad * layer.getKernelSize());
             for (int i=0;i<workLoad;i++){
-                layer.PrintKernelTo((this->WIn[g][w].GetIdx(i)),this->WTran[g][w]);
+                layer.PrintKernelTo(this->WIn[g][w].GetIdx(i),this->WTran[g][w]);
                 if (this->WIn[g][w].GetIdx(i)==IDLE)
                     assert(this->saWorkLoad[g].GetWWorkLoad(i)==layer.getKernelWorkLoad(IDLE));
             }
@@ -257,7 +257,7 @@ void Systolic::TransWIn(const Layer& layer){
     return;
 }
 
-void Systolic::TransXIn(Layer& thisLayer,Layer& lastLayer){
+void Systolic::TransXIn(const Layer& thisLayer,const Layer& lastLayer){
     assert(this->workLoadHasGen
         && thisLayer.getKW() % 2==1
         && thisLayer.getKH() % 2==1
@@ -298,6 +298,13 @@ void Systolic::TransXIn(Layer& thisLayer,Layer& lastLayer){
                         this->XTran[g][h].emplace_back((XTransIn::FeatureType)0);
                     #endif // REFORMED
                 }
+                #ifdef REFORMED
+                for (uint32_t j=0;j<thisLayer.GetExtraGroup();j++)
+                    this->XTran[g][h].emplace_back(0,FEATURE_FILL_ZERO_POSITION,true);
+                #else
+                for (uint32_t j=0;j<thisLayer.GetExtraSize ();j++)
+                    this->XTran[g][h].emplace_back((XTransIn::FeatureType)0);
+                #endif //REFORMED
             }
             #ifndef REFORMED
             this->XTran[g][h].shrink_to_fit();

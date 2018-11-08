@@ -323,7 +323,7 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
     for (auto& it : this->XIn)
         it.reserve(groupPerKernel*2);
 
-    for (int i=0;i<workLoad;i++)
+    for (int i=0;i<workLoad;i++){
         for (int h=0;h<SYS_HEIGHT;h++){
             int thisH,thisW;/// the location of the output activation
             bool idleLine = true;
@@ -479,7 +479,10 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                 }
                 beginOfZone = endOfZone;
             }
+            for (uint32_t k=0;k<thisLayer.GetExtraGroup();k++)
+                this->XIn[h].AddCtrl(BZ);
         }
+    }
 
     for (auto& it : this->XIn)
         it.shrink_to_fit();
@@ -558,7 +561,7 @@ bool  RUArray::CheckXL(const vector<vector<vector<SparseDataInFIFO<XTransIn::Fea
         }
         for (int h=0;h<SYS_HEIGHT;h++){
             if (!this->ce[h].CheckXOut(SAXData[0][h],curPos[h])){
-                std::cout<<"wenzhi height:"<<h<<" group idx:"<<i<<std::endl;
+                std::cout<<"wenzhi height:"<<h<<" group idx:"<<i<<" curPos:"<<curPos[h]<<std::endl;
                 return false;
             }
         }

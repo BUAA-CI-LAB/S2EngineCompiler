@@ -126,7 +126,7 @@ public:
 
 class SparseLoc{
 public:
-    typedef int LocType;
+    typedef uint32_t LocType;
 
 protected:
     LocType loc;
@@ -213,24 +213,12 @@ public:
         this->eog=eog;
         return;
     }
-    SparseDataInFIFO(T value,SparseLoc::LocType loc):SparseData<T>(value,loc){
-        this->eog=false;
-        return;
-    }
     SparseDataInFIFO(T value,SparseLoc loc,bool eog):SparseData<T>(value,loc.GetLoc()){
         this->eog=eog;
         return;
     }
-    SparseDataInFIFO(T value,SparseLoc loc):SparseData<T>(value,loc.GetLoc()){
-        this->eog=false;
-        return;
-    }
     SparseDataInFIFO(const SparseDataInFIFO& sdif):SparseData<T>(sdif){
         this->eog=sdif.eog; /// sdif: sparse data in FIFO
-        return;
-    }
-    SparseDataInFIFO(const SparseData<T>& value):SparseData<T>(value){
-        this->eog=false;
         return;
     }
     SparseDataInFIFO(const SparseData<T>& value,bool eog):SparseData<T>(value),eog(eog){

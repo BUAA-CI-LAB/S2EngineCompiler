@@ -44,7 +44,8 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
                     lastLayerInfo.GetD(),
                     thisLayerInfo.GetPadding(),
                     thisLayerInfo.GetHPadOff(),
-                    thisLayerInfo.GetWPadOff());
+                    thisLayerInfo.GetWPadOff(),
+                    thisLayerInfo.HasBias());
     Layer lastLayer(lastLayerInfo.GetH(),
                     lastLayerInfo.GetW(),
                     lastLayerInfo.GetD(),
@@ -52,7 +53,8 @@ void Analyze::analyze(const LayerDimension& lastLayerInfo,
                      GROUP_SIZE,
                     lastLayerInfo.GetPadding(),
                     lastLayerInfo.GetHPadOff(),
-                    lastLayerInfo.GetWPadOff());///the remained three parameter does not matter
+                    lastLayerInfo.GetWPadOff(),
+                    lastLayerInfo.HasBias());///the remained three parameter does not matter
 
     PrintProcess("[this layer] loading kernel");
     #ifdef GENERATE_DATA
@@ -654,6 +656,12 @@ void Analyze::AnalyzeRealAlexNet(std::string path){
 
     double WorkLoad=0;
 
+    this->MKLayerDir(path,"conv_0");
+    this->MKLayerDir(path,"conv_1");
+    this->MKLayerDir(path,"conv_2");
+    this->MKLayerDir(path,"conv_3");
+    this->MKLayerDir(path,"conv_4");
+
     std::cout<<"#############"<<std::endl
              <<"##  conv1  ##"<<std::endl
              <<"#############"<<std::endl;
@@ -810,6 +818,216 @@ void Analyze::AnalyzeRealVGG16(std::string path){
              <<layer8.toString()<<"->"<<layer8.toString()<<"\n"<<endl;
     analyze(layer8,layer8,3,3,1,1,path+"./conv_12/");
     WorkLoad += layer8.GetWorkLoad(layer8,3,3);
+    return;
+}
+
+void Analyze::AnalyzeRealResNet18(std::string path){
+    this->totalCyc = 0;
+
+    LayerDimension
+        layer0i (224,224,  3),
+        layer0o (112,112, 64,ZERO_PAD,3,3,false),
+        layer1i ( 56, 56, 64),
+        layer1o ( 56, 56, 64,ZERO_PAD,1,1,false),
+        layer2i ( 56, 56, 64),
+        layer2o ( 56, 56, 64,ZERO_PAD,1,1,false),
+        layer3i ( 56, 56, 64),
+        layer3o ( 56, 56, 64,ZERO_PAD,1,1,false),
+        layer4i ( 56, 56, 64),
+        layer4o ( 56, 56, 64,ZERO_PAD,1,1,false),
+        layer5i ( 56, 56, 64),
+        layer5o ( 28, 28,128,ZERO_PAD,1,1,false),
+        layer6i ( 28, 28,128),
+        layer6o ( 28, 28,128,ZERO_PAD,1,1,false),
+        layer7i ( 56, 56, 64),
+        layer7o ( 28, 28,128,ZERO_PAD,0,0,false),
+        layer8i ( 28, 28,128),
+        layer8o ( 28, 28,128,ZERO_PAD,1,1,false),
+        layer9i ( 28, 28,128),
+        layer9o ( 28, 28,128,ZERO_PAD,1,1,false),
+        layer10i( 28, 28,128),
+        layer10o( 14, 14,256,ZERO_PAD,1,1,false),
+        layer11i( 14, 14,256),
+        layer11o( 14, 14,256,ZERO_PAD,1,1,false),
+        layer12i( 28, 28,128),
+        layer12o( 14, 14,256,ZERO_PAD,0,0,false),
+        layer13i( 14, 14,256),
+        layer13o( 14, 14,256,ZERO_PAD,1,1,false),
+        layer14i( 14, 14,256),
+        layer14o( 14, 14,256,ZERO_PAD,1,1,false),
+        layer15i( 14, 14,256),
+        layer15o(  7,  7,512,ZERO_PAD,1,1,false),
+        layer16i(  7,  7,512),
+        layer16o(  7,  7,512,ZERO_PAD,1,1,false),
+        layer17i( 14, 14,256),
+        layer17o(  7,  7,512,ZERO_PAD,0,0,false),
+        layer18i(  7,  7,512),
+        layer18o(  7,  7,512,ZERO_PAD,1,1,false),
+        layer19i(  7,  7,512),
+        layer19o(  7,  7,512,ZERO_PAD,1,1,false);
+
+    double WorkLoad=0;
+
+    this->MKLayerDir(path,"conv_0");
+    this->MKLayerDir(path,"conv_1");
+    this->MKLayerDir(path,"conv_2");
+    this->MKLayerDir(path,"conv_3");
+    this->MKLayerDir(path,"conv_4");
+    this->MKLayerDir(path,"conv_5");
+    this->MKLayerDir(path,"conv_6");
+    this->MKLayerDir(path,"conv_7");
+    this->MKLayerDir(path,"conv_8");
+    this->MKLayerDir(path,"conv_9");
+    this->MKLayerDir(path,"conv_10");
+    this->MKLayerDir(path,"conv_11");
+    this->MKLayerDir(path,"conv_12");
+    this->MKLayerDir(path,"conv_13");
+    this->MKLayerDir(path,"conv_14");
+    this->MKLayerDir(path,"conv_15");
+    this->MKLayerDir(path,"conv_16");
+    this->MKLayerDir(path,"conv_17");
+    this->MKLayerDir(path,"conv_18");
+    this->MKLayerDir(path,"conv_19");
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_0  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer0i.toString()<<"->"<<layer0o.toString()<<std::endl;
+    analyze(layer0i,layer0o,7,7,2,2,path+"./conv_0/");
+    WorkLoad += layer0o.GetWorkLoad(layer0i,7,7);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_1  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer1i.toString()<<"->"<<layer1o.toString()<<"\n"<<endl;
+    analyze(layer1i,layer1o,3,3,1,1,path+"./conv_1/");
+    WorkLoad += layer1o.GetWorkLoad(layer1i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_2  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer2i.toString()<<"->"<<layer2o.toString()<<"\n"<<endl;
+    analyze(layer2i,layer2o,3,3,1,1,path+"./conv_2/");
+    WorkLoad += layer2o.GetWorkLoad(layer2i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_3  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer3i.toString()<<"->"<<layer3o.toString()<<"\n"<<endl;
+    analyze(layer3i,layer3o,3,3,1,1,path+"./conv_3/");
+    WorkLoad += layer3o.GetWorkLoad(layer3i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_4  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer4i.toString()<<"->"<<layer4o.toString()<<"\n"<<endl;
+    analyze(layer4i,layer4o,3,3,1,1,path+"./conv_4/");
+    WorkLoad += layer4o.GetWorkLoad(layer4i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_5  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer5i.toString()<<"->"<<layer5o.toString()<<"\n"<<endl;
+    analyze(layer5i,layer5o,3,3,2,2,path+"./conv_5/");
+    WorkLoad += layer5o.GetWorkLoad(layer5i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_6  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer6i.toString()<<"->"<<layer6o.toString()<<"\n"<<endl;
+    analyze(layer6i,layer6o,3,3,1,1,path+"./conv_6/");
+    WorkLoad += layer6o.GetWorkLoad(layer6i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_7  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer7i.toString()<<"->"<<layer7o.toString()<<"\n"<<endl;
+    analyze(layer7i,layer7o,1,1,2,2,path+"./conv_7/");
+    WorkLoad += layer7o.GetWorkLoad(layer7i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_8  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer8i.toString()<<"->"<<layer8o.toString()<<"\n"<<endl;
+    analyze(layer8i,layer8o,3,3,1,1,path+"./conv_8/");
+    WorkLoad += layer8o.GetWorkLoad(layer8i,3,3);
+
+    std::cout<<"##############"<<std::endl
+             <<"##  conv_9  ##"<<std::endl
+             <<"##############"<<std::endl
+             <<layer9i.toString()<<"->"<<layer9o.toString()<<"\n"<<endl;
+    analyze(layer9i,layer9o,3,3,1,1,path+"./conv_9/");
+    WorkLoad += layer9o.GetWorkLoad(layer9i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_10  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer10i.toString()<<"->"<<layer10o.toString()<<"\n"<<endl;
+    analyze(layer10i,layer10o,3,3,2,2,path+"./conv_10/");
+    WorkLoad += layer10o.GetWorkLoad(layer10i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_11  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer11i.toString()<<"->"<<layer11o.toString()<<"\n"<<endl;
+    analyze(layer11i,layer11o,3,3,1,1,path+"./conv_11/");
+    WorkLoad += layer11o.GetWorkLoad(layer11i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_12  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer12i.toString()<<"->"<<layer12o.toString()<<"\n"<<endl;
+    analyze(layer12i,layer12o,1,1,2,2,path+"./conv_12/");
+    WorkLoad += layer12o.GetWorkLoad(layer12i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_13  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer13i.toString()<<"->"<<layer13o.toString()<<"\n"<<endl;
+    analyze(layer13i,layer13o,3,3,1,1,path+"./conv_13/");
+    WorkLoad += layer13o.GetWorkLoad(layer13i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_14  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer14i.toString()<<"->"<<layer14o.toString()<<"\n"<<endl;
+    analyze(layer14i,layer14o,3,3,1,1,path+"./conv_14/");
+    WorkLoad += layer14o.GetWorkLoad(layer14i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_15  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer15i.toString()<<"->"<<layer15o.toString()<<"\n"<<endl;
+    analyze(layer15i,layer15o,3,3,2,2,path+"./conv_15/");
+    WorkLoad += layer15o.GetWorkLoad(layer15i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_16  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer16i.toString()<<"->"<<layer16o.toString()<<"\n"<<endl;
+    analyze(layer16i,layer16o,3,3,1,1,path+"./conv_16/");
+    WorkLoad += layer16o.GetWorkLoad(layer16i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_17  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer17i.toString()<<"->"<<layer17o.toString()<<"\n"<<endl;
+    analyze(layer17i,layer17o,1,1,2,2,path+"./conv_17/");
+    WorkLoad += layer17o.GetWorkLoad(layer17i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_18  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer18i.toString()<<"->"<<layer18o.toString()<<"\n"<<endl;
+    analyze(layer18i,layer18o,3,3,1,1,path+"./conv_18/");
+    WorkLoad += layer18o.GetWorkLoad(layer18i,3,3);
+
+    std::cout<<"###############"<<std::endl
+             <<"##  conv_19  ##"<<std::endl
+             <<"###############"<<std::endl
+             <<layer18i.toString()<<"->"<<layer18o.toString()<<"\n"<<endl;
+    analyze(layer18i,layer18o,3,3,1,1,path+"./conv_19/");
+    WorkLoad += layer18o.GetWorkLoad(layer18i,3,3);
     return;
 }
 #endif // GENERATE_DATA

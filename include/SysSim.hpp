@@ -250,8 +250,8 @@ public:
     void GenWorkLoad(Layer& layer);
 
     void TransWIn (const Layer& layer);
-    void TransXIn (Layer& layer,Layer& lastLayer);
-    void TransXOut(Layer& layer);
+    void TransXIn (const Layer& layer,const Layer& lastLayer);
+    void TransXOut(const Layer& layer);
 
 
     void PrintOutput  (const Layer& thisLayer,

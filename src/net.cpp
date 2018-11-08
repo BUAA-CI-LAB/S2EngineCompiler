@@ -42,7 +42,6 @@ void Kernel::Reorder(const vector<int>& reorderSeq,const vector<bool>& pattern){
             this->reordered.emplace_back(0);
         }
     }
-    assert(this->reordered.size() >= MINIMA_WEIGHT_INTERVAL);
     this->reordered.shrink_to_fit();
     return;
 }
@@ -87,14 +86,48 @@ void Kernel::PrintReorderedTo(FILE *fp)const {
 }
 
 #ifndef REFORMED
+void Kernel::FillZero(vector<WTransIn>& wTrans) const{
+#else
+void Kernel::FillZero(vector<SparseDataInFIFO<WTransIn> >& wTrans) const{
+#endif // REFORMED
+    /// fill zero to meet the requirement of minima weight interval
+    #ifdef REFORMED
+    SparseLoc::LocType inGroupIdx = 0;
+    #endif // REFORMED
+    for (int i=1;i<=this->extraSize;i++){
+        #ifdef REFORMED
+        if (inGroupIdx==FEATURE_FILL_ZERO_POSITION)
+            inGroupIdx++;
+        inGroupIdx = inGroupIdx % GROUP_SIZE;
+        #endif // REFORMED
+        if (i%(GROUP_SIZE - 1)==0 || i==this->extraSize){
+            #ifndef REFORMED
+            wTrans.emplace_back(0,true);
+            #else
+            wTrans.emplace_back(WTransIn(0,0),inGroupIdx,true);
+            #endif // REFORMED
+        }
+        else{
+            #ifndef REFORMED
+            wTrans.emplace_back(0,false);
+            #else
+            wTrans.emplace_back(WTransIn(0,0),inGroupIdx,false);
+            #endif // REFORMED
+        }
+        inGroupIdx++;
+    }
+}
+
+#ifndef REFORMED
 void Kernel::PrintReorderedTo(vector<WTransIn>& wTrans)const{
 #else
 void Kernel::PrintReorderedTo(vector<SparseDataInFIFO<WTransIn> >& wTrans,const vector<vector<SparseLoc> >& kernelLoc)const{
 #endif // REFORMED
     assert(this->reordered.size()!=0);
     #ifdef REFORMED
-    uint32_t   groupIdx = 0,
-             inGroupIdx = 0;
+    SparseLoc::LocType
+            groupIdx = 0,
+          inGroupIdx = 0;
     #endif // REFORMED
     for (unsigned int i=0;i<this->reordered.size();i++){
         #ifndef REFORMED
@@ -118,6 +151,7 @@ void Kernel::PrintReorderedTo(vector<SparseDataInFIFO<WTransIn> >& wTrans,const 
     #ifdef REFORMED
     assert(inGroupIdx == 0 && groupIdx==kernelLoc.size());
     #endif // REFORMED
+    this->FillZero(wTrans);
     return;
 }
 
@@ -171,9 +205,9 @@ Net::Net(ifstream& netArch){
 }
 
 #ifndef REFORMED
-void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<XTransIn>& xTrans){
+void Layer::MatchXTo(int x,int y,int kG,const Layer& nextLayer,vector<XTransIn>& xTrans) const{
 #else
-void Layer::MatchXTo(int x,int y,int kG,Layer& nextLayer,vector<SparseDataInFIFO<XTransIn::FeatureType> >& xTrans){
+void Layer::MatchXTo(int x,int y,int kG,const Layer& nextLayer,vector<SparseDataInFIFO<XTransIn::FeatureType> >& xTrans) const{
 #endif //REFORMED
     assert(this->kD%GROUP_SIZE==0
         && this->hasPartFeature);
@@ -234,8 +268,8 @@ bool Layer::Compute(const Layer& lastLayer){
     assert(this->hasLoadBias);
     #endif // GENERATE_DATA
     assert(this->kH%2==1&&this->kW%2==1);
-    int halfW = this->kW/2,
-        halfH = this->kH/2;
+    const int halfW = this->kW/2,
+              halfH = this->kH/2;
 
     for (int k=0;k<this->kN;k++)
         for (int y=0;y<this->lH;y++)
@@ -350,6 +384,12 @@ void Layer::LoadBias  (const string& prefix){
     assert(false);/// wenzhi: unspecified input protocol
     #endif // XUCHENG_PROTOCOL
     assert(!this->hasLoadBias);
+    if (!this->hasBias){
+        for (auto& bit : this->bias)
+            bit = 0;
+        this->hasLoadBias = true;
+        return;
+    }
     std::ifstream ifs(prefix + BIAS_FILE_PATH,std::ifstream::in);
 
     if (!ifs){
@@ -569,6 +609,7 @@ void Layer::PrintKernelTo(int kIdx,vector<SparseDataInFIFO<WTransIn> >& wTran)co
         #else
         wTran.emplace_back(WTransIn(0,true),0,true);
         #endif ///REFORMED
+        this->kernel[0].FillZero(wTran);
         return;
     }
     assert(kIdx>=0 && kIdx<((int)this->kernel.size()));

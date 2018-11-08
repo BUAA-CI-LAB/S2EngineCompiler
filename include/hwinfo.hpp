@@ -52,8 +52,8 @@
 #define       DFU_CACHE_NUM  ((SYS_GROUP*SYS_WIDTH)/SA_COLUMN_PER_DFU)
 
 /** Systolic array size **/
-#define SYS_ROW   16
-#define SYS_COLUM 16
+#define SYS_ROW   128
+#define SYS_COLUM 128
 
 #define SYS_HEIGHT SYS_ROW
 #ifdef REFORMED
@@ -66,7 +66,7 @@
 
 #define KERNEL_GROUP_SIZE SYS_WIDTH
 
-#define MINIMA_WEIGHT_INTERVAL 15
+#define MINIMA_WEIGHT_INTERVAL SYS_ROW
 
 /// for network sparsity
 #define KERNEL_SPARSE_RATE   80
