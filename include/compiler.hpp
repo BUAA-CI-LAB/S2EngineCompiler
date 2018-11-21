@@ -99,11 +99,12 @@
 //#define ANALYZE
 
 #define PRINT_PROCESS
+#define PRINT_RESULT
 
 /// use a data with lower bit-width i.e. 10 bit
 /// to represent the original 16 bit data to avoid
 /// overflow
-#define SIMULATE_16_BIT
+//#define SIMULATE_16_BIT
 
 //#define GENERATE_DATA
 
@@ -115,7 +116,7 @@
 
 //#define ROUND_IN
 
-#define PRINT_TO_FILE
+//#define PRINT_TO_FILE
 
 //#define PRINT_DEBUG_INFO
 

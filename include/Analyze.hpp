@@ -54,11 +54,16 @@ private:
     void GenKernel (int kN,int kH,int kW,int kD,int zeroRatio,int _16bitRatio,const string& prefix = "./");
     void GenFeature(int  h,int  w,int  t,       int zeroRatio,int _16bitRatio,const string& prefix = "./");
 
-    void PrintProcess(const char str[]);
+    void PrintProcess(const char str[]) const;
+    void PrintResult(std::string str) const;
 
     void analyze(const LayerDimension& lastLayerInfo,
                  const LayerDimension& thisLayerInfo,
-                 int kH,int kW,int sH=1,int sW=1,const string& prefix = "./"
+                 int kH,int kW,int sH,int sW,const string& prefix,
+                 uint64_t& totalSAWInSize,
+                 uint64_t& totalSAXInSize,
+                 uint64_t& totalCEXInSize,
+                 std::ofstream& layerInfo
                  #ifndef GENERATE_DATA
                  ,const string& weightFile = "weights"
                  ,const string&   biasFile = "bias"
@@ -178,16 +183,11 @@ public:
         return;
     }
 
-    #ifdef GENERATE_DATA
-    void AnalyzeAlexNet();
-    void AnalyzeVGG16();
-    void AnalyzeVGG19();
-    #else
-    void AnalyzeRealResNet18(std::string path);
-    void AnalyzeRealAlexNet (std::string path);
-    void AnalyzeRealVGG16   (std::string path);
-    void AnalyzeRealVGG19   (std::string path);
-    #endif // GENERATE_DATA
+    void AnalyzeResNet50(std::string path);
+    void AnalyzeResNet18(std::string path);
+    void AnalyzeAlexNet (std::string path);
+    void AnalyzeVGG16   (std::string path);
+    void AnalyzeVGG19   (std::string path);
 
     void GenPEArrayTestData(
             LayerDimension& lastLayerInfo,

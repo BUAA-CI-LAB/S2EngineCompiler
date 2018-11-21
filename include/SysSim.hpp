@@ -147,6 +147,9 @@ private:
     vector<int> cacheData[SYS_GROUP][SYS_WIDTH];
     /** used for cache analysis **/
 
+    vector<int> cacheDenseData[SYS_GROUP][SYS_WIDTH];
+    /** used for cache analysis of dense data **/
+
     #ifdef PRINT_INTERMEDIA_INFO
     FILE *PEfile,   /** output file of PE  **/
          *XInfile,  /** output file of XIn **/
@@ -196,6 +199,10 @@ private:
         const vector<SparseDataInFIFO<XTransIn::FeatureType> >& XTran, ///[    1    ][SYS_HEIGHT]
         uint32_t& lastXIdx,int& tempXIdx) const;
 
+
+    void MapWorkLoad(const std::vector<std::pair<int,int> >& pos,int kBase,int kN,bool _relaxH,uint32_t workLoadHeight);
+    void MapToSA(int lH,int lW,int kN,int hBegin,int kBase);
+
 private:
     /// ban copy constructor
 	Systolic(const Systolic &);
@@ -241,7 +248,29 @@ public:
         return;
     }
 
-    void MapToSA(Layer& layer);
+    inline void MapToSA(const Layer& layer){
+        assert(layer.getType()==CONV_LAYER);
+        assert(!this->hasMap);
+
+        for (int kBase=0;kBase<layer.getKN();kBase+=(SYS_WIDTH*SYS_GROUP)){
+            this->MapToSA(layer.getLH(),
+                          layer.getLW(),
+                          layer.getKN(),0,kBase);
+        }
+
+        for (auto& git : this->pe)
+            for (auto& hit : git)
+                for (auto& wit : hit)
+                    wit.shrink_to_fit();
+
+        assert(this->CheckPEHomo());
+        #ifdef PRINT_INTERMEDIA_INFO
+        this->PrintWorkLoad();
+        this->PrintPE();
+        #endif // PRINT_INTERMEDIA_INFO
+        this->hasMap = true;
+        return;
+    }
 
     void GenWInput(Layer& layer);
     void GenXInput(Layer& layer);
@@ -261,7 +290,10 @@ public:
 
     bool CheckXW(Layer& thisLayer) const;
 
-    int GetUpCacheSize() const;
+    int GetUpSparseCacheSize() const;
+    ///the minimal required size of the cache
+
+    int GetUpDenseCacheSize() const;
     ///the minimal required size of the cache
 
     int GetUpDataSize() const;
@@ -283,7 +315,7 @@ public:
         return this->xHasGen;
     }
 
-    void AnalyzeInputData(const Layer& thisLayer);
+    void AnalyzeWIn(const Layer& thisLayer);
 
     static float BestMap(int h,int w,int kN,int kH);
 
@@ -349,6 +381,30 @@ public:
         vector<vector<DFIFO > >().swap(this->XIn);
         this->xHasGen = false;
         return;
+    }
+    inline uint64_t GetTotalWDataSize() const{
+        assert(this->wHasTra);
+        uint32_t totalSize = 0;
+        for (const auto& git : this->WTran)
+            for (const auto& wit : git)
+                totalSize += wit.size();
+        #ifdef REFORMED
+        return totalSize *(WTransIn::bitwidth + SparseDataInFIFO<WTransIn>::extraBitwidth);
+        #else
+        return totalSize * WTransIn::bitwidth;
+        #endif // REFORMED
+    }
+    inline uint64_t GetTotalXDataSize() const{
+        assert(this->xHasTra);
+        uint32_t totalSize = 0;
+        for (const auto& git : this->XTran)
+            for (const auto& hit : git)
+                totalSize += hit.size();
+        #ifdef REFORMED
+        return totalSize *(XTransIn::bitwidth + SparseDataInFIFO<XTransIn::FeatureType>::extraBitwidth);
+        #else
+        return totalSize * XTransIn::bitwidth;
+        #endif // REFORMED
     }
     ~Systolic(){
         #ifdef PRINT_INTERMEDIA_INFO

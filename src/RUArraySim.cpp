@@ -220,8 +220,11 @@ bool RUArray::CheckLDataHomo(const Layer& layer){
     for (uint32_t k=0;k<this->LocIn[0].size();k++)
         locInGroupNum += layer.getGroupNumInKernel(this->LocIn[0][k]);
 
-    if (groupNum!=locInGroupNum)
+    if (groupNum!=locInGroupNum){
+        std::cout<<"LocIn group number:"<<locInGroupNum
+              <<" LocData group number:"<<groupNum<<std::endl;
         return false;
+    }
     for (int g=1;g<SYS_GROUP;g++){
         int tempGroupNum = 0;
         for (uint32_t i=0;i<this->LocData[g].size();i++)
@@ -295,8 +298,10 @@ void RUArray::TransLIn(const Layer& layer){
     for (int g=0;g<SYS_GROUP;g++){
         this->LocData[g].clear();
         this->LocData[g].reserve(layer.getKernelSize());
-        for (const auto& it : this->LocIn[g])
+        for (const auto& it : this->LocIn[g]){
             layer.getSparseKernelGroup(it,this->LocData[g]);
+            layer.FillKernel(this->LocData[g]);
+        }
         this->LocData[g].shrink_to_fit();
     }
     assert(this->CheckLDataHomo(layer));
@@ -344,13 +349,69 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                 }
             }
 
+            #ifndef STRAIGHT_OUT
             bool endOfZone;/// to remark if it can get data from synchronized FIFO
+            #endif // STRAIGHT_OUT
             if (idleLine){
+                #ifndef RELAX_MAPPING_H
                 for (int kh=0;kh<groupPerKernel;kh++)
                     this->XIn[h].AddCtrl(BZ);
                 beginOfZone = true;
+                #else
+                if (!beginOfZone){
+                    for (int kh=0;kh<groupPerKernel;kh++)
+                        this->XIn[h].AddCtrl(RSWBZ);
+                }
+                else{
+                    for (int kh=0;kh<groupPerKernel;kh++)
+                        this->XIn[h].AddCtrl(BZ);
+                }
+                #endif // RELAX_MAPPING_H
             }
             else{
+                #ifdef STRAIGHT_OUT
+                for (int w = thisW * thisLayer.getSW();
+                         w < thisW * thisLayer.getSW()
+                                   + thisLayer.getKW();w++){
+                    int lastW =  w - thisLayer.getWPadOff();
+                    /// the location of the  input activation
+                    for (int g=0;g<groupPerline;g++)
+                        for (int kh=0;kh<thisLayer.getKH();kh++){
+                            int lastH = thisH*thisLayer.getSH()-thisLayer.getHPadOff()+kh;
+                            /// the location of the  input activation
+
+                            this->XIn[h].AddCtrl(RAB);
+
+                            if (thisLayer.getPadType()==SAME_PAD){
+                                lastW =
+                                    (lastW<0)?0:
+                                    (lastW<lastLayer.getLW())?
+                                     lastW:lastLayer.getLW()-1;
+                                lastH =
+                                    (lastH<0)?0:
+                                    (lastH<lastLayer.getLH())?
+                                     lastH:lastLayer.getLH()-1;
+                                this->XIn[h].AddFeature(
+                                        groupPerline*lastH*lastLayer.getLW()+
+                                        groupPerline*lastW+g);
+                            }
+                            else if (thisLayer.getPadType()==ZERO_PAD){
+                                if (lastW<0 || lastW>=lastLayer.getLW()
+                                 || lastH<0 || lastH>=lastLayer.getLH()){
+                                    this->XIn[h].AddZeroGroup();
+                                }
+                                else{
+                                    this->XIn[h].AddFeature(
+                                        groupPerline*lastH*lastLayer.getLW()+
+                                        groupPerline*lastW+g);
+                                }
+                            }
+                            else{
+                                assert(false);
+                            }
+                        }
+                }
+                #else
                 endOfZone = true;
                 if (h<SYS_HEIGHT-1){
                     #ifndef REFORMED
@@ -478,6 +539,7 @@ void RUArray::GenXIn(const Layer& lastLayer,const Layer& thisLayer,const vector<
                     }
                 }
                 beginOfZone = endOfZone;
+                #endif // STRAIGHT_OUTPUT
             }
             for (uint32_t k=0;k<thisLayer.GetExtraGroup();k++)
                 this->XIn[h].AddCtrl(BZ);
@@ -521,7 +583,7 @@ bool RUArray::CheckXL(const vector<vector<vector<XTransIn> > >& SAXData){
     memset( xinIdx,0,sizeof( xinIdx));
     memset(wlocIdx,0,sizeof(wlocIdx));
 
-    for (int i=0;i<this->groupNum;i++){
+    for (uint32_t i=0;i<this->groupNum;i++){
         /** prepare wloc input for RUArray **/
         for (int g=0;g<SYS_GROUP;g++){
             this->wloc[g].clear();
@@ -554,7 +616,7 @@ bool RUArray::CheckXL(const vector<vector<vector<XTransIn> > >& SAXData){
 #else
 bool  RUArray::CheckXL(const vector<vector<vector<SparseDataInFIFO<XTransIn::FeatureType> > > >& SAXData){
     vector<int> curPos(SYS_HEIGHT,0);
-    for (int i=0;i<this->groupNum;i++){
+    for (uint32_t i=0;i<this->groupNum;i++){
         /** prepare XIn for RUArray **/
         for (int h=0;h<SYS_HEIGHT;h++){
             this->ce[h].PeriodPush(this->XData[h]);
@@ -648,39 +710,9 @@ void RUArray::PrintLData(const std::string& prefix){
     return;
 }
 
-void RUArray::AnalyzeInputData(const Layer& thisLayer,const Layer& lastLayer){
-    assert(this->hasGenLIn
-        && this->hasGenXIn
+void RUArray::AnalyzeXIn(const Layer& lastLayer){
+    assert(this->hasGenXIn
         &&!this->hasAnal);
-    this->globDataSize  = 0;
-    this->inRowDataSize = 0;
-    this->loadDataSize  = 0;
-    int maxInputCycle = 0;
-    for (const auto& it : this->XIn){
-        int thisRowCycle = 0;
-        for (uint32_t i=0;i<it.GetWorkLoad();i++){
-            if (it.IfCtrl(i)){
-                thisRowCycle++;
-                this->loadDataSize++;
-            }
-            else{
-                thisRowCycle+=lastLayer.getSparseFeatureGroupSize(it.GetFeature(i));
-                this->loadDataSize+=lastLayer.getSparseFeatureGroupSize(it.GetFeature(i));
-            }
-        }
-        if (thisRowCycle > maxInputCycle)
-            maxInputCycle = thisRowCycle;
-    }
-    maxInputCycle *= SFIFO_Data::BitWidth;
-    for (const auto& wit : this->LocIn){
-        int thisColumCycle = 0;
-        for (const auto& kit : wit)
-            thisColumCycle += thisLayer.getKernelWorkLoad(kit);
-        if (thisColumCycle * WEIGHT_BIT_WIDTH > maxInputCycle)
-            maxInputCycle = thisColumCycle * WEIGHT_BIT_WIDTH;
-    }
-    this->inputCycle    = maxInputCycle;
-    this->loadDataSize *= SFIFO_Data::BitWidth;
 
     vector<DataInSFIFO<int> > merged;
     uint32_t totalGroupNum = 0;
@@ -690,135 +722,53 @@ void RUArray::AnalyzeInputData(const Layer& thisLayer,const Layer& lastLayer){
     }
     merged.reserve(totalGroupNum);
 
-    uint32_t inRowDataUsed = 0;
-       this->inRowDataSize = 0;
+    this->inRowDenseDataSize  = 0;
+    this->inRowSparseDataSize = 0;
     for (auto& it : this->XIn){
+        if (it.GetGroupNum()==0)
+            continue;
         int nowGroup = it.GetFeature(0);
-        uint32_t nowUsed  = 0;
         for (uint32_t i=0;i<it.GetGroupNum();i++){
             assert(!it.IfCtrl(i));
             if (nowGroup!= it.GetFeature(i)){
-                      inRowDataUsed += lastLayer.getSparseFeatureGroupSize(nowGroup) * nowUsed;
-                this->inRowDataSize += lastLayer.getSparseFeatureGroupSize(nowGroup);
+                this->inRowDenseDataSize++;
+                this->inRowSparseDataSize
+                 += lastLayer.getSparseFeatureGroupSize(nowGroup);
                 nowGroup = it.GetFeature(i);
-                nowUsed  = 1;
-                continue;
             }
-            nowUsed++;
         }
-              inRowDataUsed += lastLayer.getSparseFeatureGroupSize(nowGroup) * nowUsed;
-        this->inRowDataSize += lastLayer.getSparseFeatureGroupSize(nowGroup);
+        this->inRowDenseDataSize++;
+        this->inRowSparseDataSize
+         += lastLayer.getSparseFeatureGroupSize(nowGroup);
 
         it.CopyGroupTo(merged);
         it.Clear();
     }
-    this->inRowAveReuse = (1.0) * inRowDataUsed
-                          / this->inRowDataSize;
-    this->inRowDataSize*= SFIFO_Data::BitWidth;
+    this->inRowSparseDataSize*= SFIFO_Data::bitwidth;
+    this->inRowDenseDataSize *= GROUP_SIZE * WEIGHT_BIT_WIDTH;
 
-    std::sort(merged.begin(),
-              merged.end(),
+    std::sort(merged.begin(),merged.end(),
            [](const DataInSFIFO<int32_t>& a,
               const DataInSFIFO<int32_t>& b)
            -> bool {return a.GetFeature()>b.GetFeature();});
 
-    uint32_t globDataUsed = 0;
-       this->globDataSize = 0;
+    this->globSparseDataSize = 0;
+    this-> globDenseDataSize = 0;
     int nowGroup = merged.front().GetFeature();
-    uint32_t nowUsed  = 0;
     for (const auto& it : merged){
         assert(!it.IsCtrl());
-        if (nowGroup!= it.GetFeature()){
-                  globDataUsed += lastLayer.getSparseFeatureGroupSize(nowGroup) * nowUsed;
-            this->globDataSize += lastLayer.getSparseFeatureGroupSize(nowGroup);
+        if (nowGroup != it.GetFeature()){
+            this->globDenseDataSize++;
+            this->globSparseDataSize
+             += lastLayer.getSparseFeatureGroupSize(nowGroup);
             nowGroup = it.GetFeature();
-            nowUsed  = 1;
             continue;
         }
-        nowUsed++;
     }
-          globDataUsed += lastLayer.getSparseFeatureGroupSize(nowGroup) * nowUsed;
-    this->globDataSize += lastLayer.getSparseFeatureGroupSize(nowGroup);
-
-    this->globAveReuse = (1.0) * globDataUsed
-                         / this->globDataSize;
-    this->globDataSize*= SFIFO_Data::BitWidth;
-
-    this->upDataSize = 0;
-    const int workLoad = this->LocIn[0].size();
-    const int kerneNum = thisLayer.getKN();
-    for (int g=0;g<SYS_GROUP;g++){
-        vector<int> mm(workLoad,0);
-        /** memory management, the amount of data will be
-         ** used in the beginning of the workload
-         ** count in bit**/
-        vector<bool> lastUse(kerneNum,false),
-                   firstLoad(kerneNum,false);
-        this->cacheData[g].clear();
-        this->cacheData[g].resize(workLoad);
-        for (int i=workLoad-1;i>=0;i--){
-            if (this->LocIn[g][i]==IDLE)
-                continue;
-            if (!lastUse[this->LocIn[g][i]]){
-                 lastUse[this->LocIn[g][i]]=true;
-                 if (i<workLoad-1)
-                    mm[i+1]-=thisLayer.getKernelWorkLoad(this->LocIn[g][i]);
-            }
-        }
-        for (int i=0;i<workLoad;i++){
-            if (this->LocIn[g][i]==IDLE)
-                continue;
-            if (!firstLoad[this->LocIn[g][i]]){
-                 firstLoad[this->LocIn[g][i]]=true;
-                 this->upDataSize+=thisLayer.getKernelWorkLoad(this->LocIn[g][i]);
-                 mm[i]+=thisLayer.getKernelWorkLoad(this->LocIn[g][i]);
-            }
-        }
-        #ifdef SPARSE_IN_GROUP_ADDRESS
-        this->cacheData[g][0] =   mm[0] * LOC_BIT_WIDTH;
-        for (int i=1;i<workLoad;i++)
-            this->cacheData[g][i]
-         =  this->cacheData[g][i-1]+mm[i] * LOC_BIT_WIDTH;
-        #endif // SPARSE_IN_GROUP_ADDRESS
-        #ifdef SPARSE_RELATIVE_ADDRESS
-        this->cacheData[g][0] =   mm[0] * RELATIVE_LOC_BIT_WIDTH;
-        for (int i=1;i<workLoad;i++)
-            this->cacheData[g][i]
-         =  this->cacheData[g][i-1]+mm[i] * RELATIVE_LOC_BIT_WIDTH;
-        #endif // SPARSE_RELATIVE_ADDRESS
-    }
-    #ifdef SPARSE_IN_GROUP_ADDRESS
-    this->upDataSize *= LOC_BIT_WIDTH;
-    #endif // SPARSE_IN_GROUP_ADDRESS
-    #ifdef SPARSE_RELATIVE_ADDRESS
-    this->upDataSize *= RELATIVE_LOC_BIT_WIDTH;
-    #endif // SPARSE_RELATIVE_ADDRESS
-
-    vector<int> reuseTime(kerneNum/KERNEL_GROUP_SIZE,0);
-    for (int g=0;g<SYS_GROUP;g++){
-        int nowCalc=0;
-        for (int i=0;i<workLoad;i++)
-            if (this->LocIn[g][i]==IDLE)
-                nowCalc++;
-        for (int i=0;i<workLoad;i++){
-            int nowIdx;
-            assert(nowCalc<=workLoad);
-            if (nowCalc==workLoad)
-                break;
-            if (reuseTime[this->LocIn[g][i]]==0){
-                nowIdx = this->LocIn[g][i];
-                for (int j=i;j<workLoad;j++)
-                    if (this->LocIn[g][j] == nowIdx)
-                        reuseTime[nowIdx]++;
-                nowCalc += reuseTime[nowIdx];
-                continue;
-            }
-            assert(false);
-        }
-    }
-    for (int i=0;i<kerneNum/KERNEL_GROUP_SIZE;i++)
-        assert(reuseTime[i]!=0 && reuseTime[i]==reuseTime[0]);
-    this->upDataReuseTime = reuseTime[0];
+    this->globDenseDataSize++;
+    this->globDenseDataSize*= GROUP_SIZE * WEIGHT_BIT_WIDTH;
+    this->globSparseDataSize+=lastLayer.getSparseFeatureGroupSize(nowGroup);
+    this->globSparseDataSize*=SFIFO_Data::bitwidth;
     this->hasAnal = true;
     return;
 }

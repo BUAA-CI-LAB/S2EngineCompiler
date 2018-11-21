@@ -8,103 +8,52 @@
 
 using namespace std;
 
+#define TEST
+
+#ifdef TEST
 int main(){
-//    Analyze().AnalyzeAlexNet();
-//    Analyze().AnalyzeVGG16();
-//    Analyze().AnalyzeVGG19();
-
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/16bits/n01601694.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01601694.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01688243.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01735189.jpg/");
-
-//    Analyze().AnalyzeRealAlexNet("./16bits/n01601694.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01601694.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01688243.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n01735189.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n02093754.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n02099712.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n02701002.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n02841315.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03014705.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03042490.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03249569.jpg/");
-//
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03255030.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03481172.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03676483.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03769881.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n03814906.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n04026417.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n04404412.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n04532670.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n07715103.jpg/");
-//    Analyze().AnalyzeRealAlexNet("./alexnet/pruned/8bits/n07930864.jpg/");
-
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n01601694.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n01688243.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n01735189.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n02093754.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n02099712.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n02701002.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n02841315.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03014705.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03042490.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03249569.jpg/");
-//
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03255030.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03481172.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03676483.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03769881.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n03814906.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n04026417.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n04404412.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n04532670.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n07715103.jpg/");
-//    Analyze().AnalyzeRealVGG16("./alexnet/pruned/16bits/n07930864.jpg/");
-
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n01601694.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n01688243.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n01735189.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n02093754.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n02099712.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n02701002.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n02841315.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03014705.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03042490.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03249569.jpg/");
-//
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03255030.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03481172.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03676483.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03769881.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n03814906.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n04026417.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n04404412.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n04532670.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n07715103.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/8bits/n07930864.jpg/");
-
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n01601694.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n01688243.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n01735189.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n02093754.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n02099712.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n02701002.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n02841315.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03014705.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03042490.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03249569.jpg/");
-//
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03255030.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03481172.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03676483.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03769881.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n03814906.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n04026417.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n04404412.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n04532670.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n07715103.jpg/");
-//    Analyze().AnalyzeRealVGG16("./vgg16/pruned/16bits/n07930864.jpg/");
+//    Analyze().AnalyzeResNet50("./ResNet50/n02092339_2913.JPEG/");
+//    Analyze().AnalyzeAlexNet("./AlexNet/n03481172.jpg/");
+//    Analyze().AnalyzeAlexNet("./AlexNet/n02783161_4946.JPEG/");
+    Analyze().AnalyzeVGG16  ("./VGG16/n02841315_7661.JPEG/");
+//    Analyze().AnalyzeResNet18("./ResNet18/n01751748_11712.JPEG/");
     return 0;
 }
+#else
+int main(int argc, char * argv []){
+    std::string str1;
+    std::string str2;
+    switch(argc){
+    case 2:
+        str1 = argv[1];
+        if (str1.compare("AlexNet") == 0)
+            Analyze().AnalyzeAlexNet("./");
+        else if (str1.compare("VGG16") == 0)
+            Analyze().AnalyzeVGG16("./");
+        else if (str1.compare("ResNet18") == 0)
+            Analyze().AnalyzeResNet18("./");
+        else if (str1.compare("ResNet50") == 0)
+            Analyze().AnalyzeResNet50("./");
+        else
+            std::cout<<"unsupported model"<<std::endl;
+        break;
+    case 3:
+        str1 = argv[1];
+        str2 = argv[2];
+        if (str1.compare("AlexNet") == 0)
+            Analyze().AnalyzeAlexNet(str2);
+        else if (str1.compare("VGG16") == 0)
+            Analyze().AnalyzeVGG16(str2);
+        else if (str1.compare("ResNet18") == 0)
+            Analyze().AnalyzeResNet18(str2);
+        else if (str1.compare("ResNet50") == 0)
+            Analyze().AnalyzeResNet50(str2);
+        else
+            std::cout<<"unsupported model"<<std::endl;
+        break;
+    default:
+        std::cout<<"illegal parameter number"<<std::endl;
+    }
+    return 0;
+}
+#endif //TEST

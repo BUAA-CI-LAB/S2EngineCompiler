@@ -14,8 +14,11 @@ int Layer::idxCounter=0;
 bool Kernel::CheckPattern(const vector<bool>& pattern){
     assert(this->initial.size() == pattern.size());
     for (unsigned int i=0;i<this->initial.size();i++)
-        if ((  pattern[i] &&(this->initial[i]==0))
-         || ((!pattern[i])&&(this->initial[i]!=0))){
+        if (((!pattern[i])&&(this->initial[i]!=0))
+             #ifdef REFORMED
+         ||   (pattern[i] &&(this->initial[i]==0))
+             #endif // REFORMED
+            ){
             std::cout<<"Error @"<<i<<std::endl;
             return false;
          }
@@ -101,21 +104,34 @@ void Kernel::FillZero(vector<SparseDataInFIFO<WTransIn> >& wTrans) const{
         inGroupIdx = inGroupIdx % GROUP_SIZE;
         #endif // REFORMED
         if (i%(GROUP_SIZE - 1)==0 || i==this->extraSize){
-            #ifndef REFORMED
-            wTrans.emplace_back(0,true);
+        #ifndef REFORMED
+            wTrans.emplace_back(0,false);
             #else
-            wTrans.emplace_back(WTransIn(0,0),inGroupIdx,true);
+            wTrans.emplace_back(WTransIn(0,false),inGroupIdx,true);
             #endif // REFORMED
         }
         else{
             #ifndef REFORMED
             wTrans.emplace_back(0,false);
             #else
-            wTrans.emplace_back(WTransIn(0,0),inGroupIdx,false);
+            wTrans.emplace_back(WTransIn(0,false),inGroupIdx,false);
             #endif // REFORMED
         }
+        #ifdef REFORMED
         inGroupIdx++;
+        #endif // REFORMED
     }
+}
+
+
+void Layer::FillKernel(vector<SparseLocInFIFO>& sparseLoc) const{
+    for (uint32_t i=1;i<=this->GetExtraSize();i++){
+        if (i%GROUP_SIZE ==0 || i==this->GetExtraSize())
+            sparseLoc.emplace_back((i-1)%GROUP_SIZE,true);
+        else
+            sparseLoc.emplace_back((i-1)%GROUP_SIZE,false);
+    }
+    return;
 }
 
 #ifndef REFORMED
@@ -232,7 +248,6 @@ void Layer::MatchXTo(int x,int y,int kG,const Layer& nextLayer,vector<SparseData
                 #ifdef REFORMED
                 xTrans.emplace_back(0,FEATURE_FILL_ZERO_POSITION,1);
                 #else
-                const int kB = k * GROUP_SIZE;
                 for (int i=0;i<GROUP_SIZE;i++)
                     if(nextLayer.pattern[kG][it*GROUP_SIZE+i])
                         xTrans.emplace_back((XTransIn::FeatureType)0);
@@ -257,9 +272,9 @@ void Layer::MatchXTo(int x,int y,int kG,const Layer& nextLayer,vector<SparseData
 }
 
 #ifdef GENERATE_DATA
-void Layer::Compute(const Layer& lastLayer){
+void Layer::Compute(const Layer& lastLayer,uint32_t& totoalCompute){
 #else
-bool Layer::Compute(const Layer& lastLayer){
+bool Layer::Compute(const Layer& lastLayer,uint32_t& totoalCompute){
 #endif // GENERATE_DATA
     #ifdef GENERATE_DATA
     assert(!this->hasLoadFeature);
@@ -271,6 +286,8 @@ bool Layer::Compute(const Layer& lastLayer){
     const int halfW = this->kW/2,
               halfH = this->kH/2;
 
+    totoalCompute = 0;
+
     for (int k=0;k<this->kN;k++)
         for (int y=0;y<this->lH;y++)
             for (int x=0;x<this->lW;x++){
@@ -278,11 +295,11 @@ bool Layer::Compute(const Layer& lastLayer){
                 #ifdef GENERATE_DATA
                 tempFeature = 0;
                 #else
-                #ifndef SIMULATE_16_BIT
-                tempFeature = this->bias[k];
-                #else
-                tempFeature = 0;
-                #endif // SIMULATE_16_BIT
+                    #ifndef SIMULATE_16_BIT
+                    tempFeature = this->bias[k];
+                    #else
+                    tempFeature = 0;
+                    #endif // SIMULATE_16_BIT
                 #endif // GENERATE_DATA
                 for (int w=-halfW,kw=0;w<=halfW;w++,kw++){
                     for (int h=-halfH,kh=0;h<=halfH;h++,kh++){
@@ -309,36 +326,37 @@ bool Layer::Compute(const Layer& lastLayer){
                         else/// other padding style has not been exploited
                             assert(false);
 
-                        lastLayer.AddInnerProduct(
-                            lastX,lastY,this->kernel[k],
-                            #ifdef XUCHENG_PROTOCOL
-                            (kw*this->kH+kh)*this->kD,this->kD,
-                            #else
-                            (kw*this->kH+kh)*this->kD,this->kD,
-                            #endif // XUCHENG_PROTOCOL
-                            tempFeature
-                        );
+                        totoalCompute +=
+                            lastLayer.AddInnerProduct(
+                                lastX,lastY,this->kernel[k],
+                                #ifdef XUCHENG_PROTOCOL
+                                (kw*this->kH+kh)*this->kD,this->kD,
+                                #else
+                                (kw*this->kH+kh)*this->kD,this->kD,
+                                #endif // XUCHENG_PROTOCOL
+                                tempFeature
+                            );
                         /// to calculate the accuracy output value
                     }
                 }
                 #ifdef GENERATE_DATA
-                this->feature[k][y][x] = tempFeature;
+                    this->feature[k][y][x] = tempFeature;
                 #else
-                #ifndef SIMULATE_16_BIT
-                #ifdef ROUND_IN
-                if (std::abs(this->feature[k][y][x] - tempFeature)>std::abs(this->feature[k][y][x])/10000){
-                #else
-                if (this->feature[k][y][x] != tempFeature){
-                #endif // ROUND_IN
-                    std::cout<<"k:"<<k<<" y:"<<y<<" x:"<<x<<std::endl;
-                    std::cout<<"loaded feature:"<<this->feature[k][y][x]<<std::endl;
-                    std::cout<<"actual output :"<<tempFeature<<std::endl;
-                    return false;
-                }
-                this->feature[k][y][x] -= this->bias[k];
-                #else
-                this->feature[k][y][x] = tempFeature;
-                #endif // SIMULATE_16_BIT
+                    #ifndef SIMULATE_16_BIT
+                        #ifdef ROUND_IN
+                        if (std::abs(this->feature[k][y][x] - tempFeature)>std::abs(this->feature[k][y][x])/10000){
+                        #else
+                        if (this->feature[k][y][x] != tempFeature){
+                        #endif // ROUND_IN
+                            std::cout<<"k:"<<k<<" y:"<<y<<" x:"<<x<<std::endl;
+                            std::cout<<"loaded feature:"<<this->feature[k][y][x]<<std::endl;
+                            std::cout<<"actual output :"<<tempFeature<<std::endl;
+                            return false;
+                        }
+                        this->feature[k][y][x] -= this->bias[k];
+                    #else
+                    this->feature[k][y][x] = tempFeature;
+                    #endif // SIMULATE_16_BIT
                 #endif // GENERATE_DATA
             }
     #ifdef GENERATE_DATA
@@ -349,11 +367,31 @@ bool Layer::Compute(const Layer& lastLayer){
     #endif
 }
 
-inline void Layer::AddInnerProduct(int x,int y,const Kernel& k,int kBegin,int kLen,XTransIn::FeatureType& parsum)const{
+inline uint32_t Layer::AddInnerProduct(int x,int y,const Kernel& k,int kBegin,int kLen,XTransIn::FeatureType& parsum)const{
     assert(kLen==this->kN);
-    for (int i=0;i<this->kN;i++)
+    uint32_t totalCompute=0;
+    for (int i=0;i<this->kN;i++){
         parsum += this->feature[i][y][x] * k.GetWeight(kBegin+i);
-    return;
+        if (this->feature[i][y][x] != 0
+         && k.GetWeight(kBegin+i)  != 0){
+            #ifndef MIXED_PRECISION
+            totalCompute ++;
+            #else
+            if (MyMath::Is16Bit(this->feature[i][y][x])
+             && MyMath::Is16Bit(k.GetWeight(kBegin+i))){
+                totalCompute += 4;
+            }
+            else if (
+                MyMath::Is16Bit(k.GetWeight(kBegin+i))
+             || MyMath::Is16Bit(this->feature[i][y][x])){
+                totalCompute += 2;
+            }
+            else
+                totalCompute ++;
+            #endif // MIXED_PRECISION
+        }
+    }
+    return totalCompute;
 }
 
 void Layer::PartitionFeature(){

@@ -57,6 +57,12 @@ private:
     bool ifAny;
 
 public:
+    #ifndef MIXED_PRECISION
+    static constexpr uint8_t bitwidth = WEIGHT_BIT_WIDTH;
+    #else
+    static constexpr uint8_t bitwidth = WEIGHT_BIT_WIDTH + MARK_BIT_WIDTH;
+    #endif // MIXED_PRECISION
+
     XTransIn(FeatureType value){
         this->value= value;
         this->ifAny= false;
@@ -111,6 +117,12 @@ private:
     bool EOK;
 
 public:
+    #ifndef MIXED_PRECISION
+    static constexpr uint8_t bitwidth = WEIGHT_BIT_WIDTH + EOW_BIT_WIDTH;
+    #else
+    static constexpr uint8_t bitwidth = WEIGHT_BIT_WIDTH + EOW_BIT_WIDTH + MARK_BIT_WIDTH;
+    #endif // MIXED_PRECISION
+
     WTransIn(WeightType weight,bool EOK){
         this->weight = weight;
         this->EOK    = EOK;
@@ -132,6 +144,8 @@ protected:
     LocType loc;
 
 public:
+    static constexpr uint8_t bitwidth = LOC_BIT_WIDTH;
+
     SparseLoc(LocType loc){
         this->loc = loc;
         return;
@@ -150,11 +164,13 @@ private:
     bool eog;
 
 public:
-    SparseLocInFIFO(LocType loc,bool eog=false):SparseLoc(loc){
+    static constexpr uint8_t bitwidth = SparseLoc::bitwidth + EOG_BIT_WIDTH;
+
+    SparseLocInFIFO(LocType loc,bool eog):SparseLoc(loc){
         this->eog = eog;
         return;
     }
-    SparseLocInFIFO(SparseLoc sparseLoc,bool eog=false):SparseLoc(sparseLoc){
+    SparseLocInFIFO(SparseLoc sparseLoc,bool eog):SparseLoc(sparseLoc){
         this->eog = eog;
         return;
     }
@@ -174,6 +190,10 @@ protected:
     T value;
 
 public:
+    static constexpr uint8_t extraBitwidth = SparseLoc::bitwidth;
+///    static constexpr uint8_t bitwidth = SparseLoc::bitwidth + T::bitwidth;
+///     to do: change the data type, not using T with a basic data type
+
     SparseData(T value,SparseLoc::LocType loc)
         :value(value){
         #ifdef SPARSE_IN_GROUP_ADDRESS
@@ -209,6 +229,10 @@ private:
 	bool eog; /// End-Of-Segment
 
 public:
+    static constexpr uint8_t extraBitwidth = SparseLocInFIFO::bitwidth;
+///    static constexpr uint8_t bitwidth = SparseLocInFIFO::bitwidth + T::bitwidth;
+///     to do: change the data type, not using T with a basic data type
+
     SparseDataInFIFO(T value,SparseLoc::LocType loc,bool eog):SparseData<T>(value,loc){
         this->eog=eog;
         return;

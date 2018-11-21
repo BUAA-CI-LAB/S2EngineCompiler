@@ -14,6 +14,8 @@
 #define    LOC_BIT_WIDTH 4
 #define    EOG_BIT_WIDTH 1
 #define    EOW_BIT_WIDTH 1
+#define   MARK_BIT_WIDTH 1 /// to classify 8bit and 16bit
+#define   CTRL_MARK_BIT_WIDTH 1 /// to classify the ctrl and data for CE input
 #define RELATIVE_LOC_BIT_WIDTH 2
 
 #define REFORMED
@@ -52,8 +54,8 @@
 #define       DFU_CACHE_NUM  ((SYS_GROUP*SYS_WIDTH)/SA_COLUMN_PER_DFU)
 
 /** Systolic array size **/
-#define SYS_ROW   16
-#define SYS_COLUM 16
+#define SYS_ROW   128
+#define SYS_COLUM 128
 
 #define SYS_HEIGHT SYS_ROW
 #ifdef REFORMED
@@ -64,13 +66,21 @@
     #define SYS_GROUP  1
 #endif // REFORMED
 
+#define RELAX_MAPPING_W
+/// relax the workload mapping on W
+#define RELAX_MAPPING_H
+/// relax the workload mapping on H
+
 #define KERNEL_GROUP_SIZE SYS_WIDTH
 
 #define MINIMA_WEIGHT_INTERVAL SYS_ROW
 
+//#define STRAIGHT_OUT
+/// equivalent to ban the CE array
+
 /// for network sparsity
-#define KERNEL_SPARSE_RATE   80
-#define FEATURE_ZERO_PERCENT 80
+#define KERNEL_SPARSE_RATE   0
+#define FEATURE_ZERO_PERCENT 0
 
 /// for value precision
 #define KERNEL_16_BIT_RATE 0     ///  KERNEL_16_BIT_RATE%    of the non-zero weight     is 16 bit

@@ -196,13 +196,13 @@ private:
     float inRowAveReuse,
            globAveReuse;
 
-    int globDataSize,
-       inRowDataSize,
-        loadDataSize,///all data get into RU array, to calculate bandwidth
-          upDataSize,
-          upDataReuseTime,
-          inputCycle,
-          groupNum;
+    uint32_t groupNum;
+
+    uint32_t
+        inRowSparseDataSize,
+         globSparseDataSize,
+         inRowDenseDataSize,
+          globDenseDataSize;
 
     vector<vector<int> > cacheData;///[SYS_GROUP]
 
@@ -280,40 +280,30 @@ public:
     void PrintXData(const std::string& prefix = "./");
     void PrintLData(const std::string& prefix = "./");
 
-    void AnalyzeInputData(const Layer& thisLayer,
-                          const Layer& lastLayer);
+    void AnalyzeXIn(const Layer& lastLayer);
 
-    inline float GetInRowReuseTime() const{
+    inline uint32_t GetInRowSparseDataSize()const{
         assert(this->hasAnal);
-        return this->inRowAveReuse;
+        return inRowSparseDataSize;
     }
-    inline float GetGlobReuseTime() const{
+    inline uint32_t GetGlobSparseDataSize()const{
         assert(this->hasAnal);
-        return this->globAveReuse;
+        return globSparseDataSize;
     }
-    inline int GetGlobDataSize() const{
+    inline uint32_t GetInRowDenseDataSize()const{
         assert(this->hasAnal);
-        return this->globDataSize;
+        return inRowDenseDataSize;
     }
-    inline int GetInRowDataSize() const{
+    inline uint32_t GetGlobDenseDataSize()const{
         assert(this->hasAnal);
-        return this->inRowDataSize;
+        return globDenseDataSize;
     }
-    inline int GetLoadDataSize() const{
-        assert(this->hasAnal);
-        return this->loadDataSize;
-    }
-    inline int GetUpLoadDataSize() const{
-        assert(this->hasAnal);
-        return this->upDataSize;
-    }
-    inline int GetUpDataReuseTime() const{
-        assert(this->hasAnal);
-        return this->upDataReuseTime;
-    }
-    inline int GetInputCyc() const{
-        assert(this->hasAnal);
-        return this->inputCycle;
+
+    inline uint64_t GetTotalXInSize() const{
+        uint64_t totalSize = 0;
+        for (const auto& hit : this->XData)
+            totalSize += hit.GetTotalSize();
+        return totalSize *  SFIFO_Data::bitwidth;
     }
 
     ~RUArray(){

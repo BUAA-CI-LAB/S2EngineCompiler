@@ -78,9 +78,15 @@ public:
     inline uint32_t GetExtraGroup() const{
         if (this->extraSize <= 0)
             return 0;
+        #ifdef REFORMED
         return ceil(this->extraSize * 1.0 /(GROUP_SIZE - 1));
+        #else
+        return ceil(this->extraSize * 1.0 /(GROUP_SIZE));
+        #endif // REFORMED
     }
-    inline int GetExtraSize() const{
+    inline uint32_t GetExtraSize() const{
+        if (this->extraSize <= 0)
+            return 0;
         return this->extraSize;
     }
 };
@@ -140,7 +146,7 @@ private:
     FILE* fpFeature;
     #endif // PRINT_INTERMEDIA_INFO
 
-    inline void AddInnerProduct(int x,int y,const Kernel& k,int kBegin,int kLen,XTransIn::FeatureType& parsum)const;
+    inline uint32_t AddInnerProduct(int x,int y,const Kernel& k,int kBegin,int kLen,XTransIn::FeatureType& parsum)const;
 
     /// ban copy constructor
 	Layer(const Layer &);
@@ -176,6 +182,7 @@ public:
           enum PAD_TYPE padding,
           uint8_t hPadOff,
           uint8_t wPadOff,
+          bool isInput,
           bool hasBias)
           : idx(Layer::idxCounter++),
             type(CONV_LAYER),
@@ -198,7 +205,7 @@ public:
         sparseFeature(lH*lW*kD/ GROUP_SIZE),
             kernelLoc(kN/KERNEL_GROUP_SIZE){
 
-        assert(kN%KERNEL_GROUP_SIZE==0);
+        assert(isInput || (kN%KERNEL_GROUP_SIZE==0));
 
         this->hasLoadKernel  = false;
         #ifndef GENERATE_DATA
@@ -255,11 +262,6 @@ public:
         return;
     }
 
-    inline int getGroupNumInKernel(uint32_t idx) const{
-        assert(idx>=0 && idx<this->kernelLoc.size());
-        return this->kernelLoc[idx].size();
-    }
-
     inline enum PAD_TYPE getPadType() const{
         return this->padding;
     }
@@ -280,9 +282,14 @@ public:
         return this->kernel[0].GetExtraGroup();
     }
 
-    inline int GetExtraSize() const{
+    inline uint32_t GetExtraSize() const{
         assert(this->kernel.size()>0);
         return this->kernel[0].GetExtraSize();
+    }
+
+    inline int getGroupNumInKernel(uint32_t idx) const{
+        assert(idx>=0 && idx<this->kernelLoc.size());
+        return this->kernelLoc[idx].size() + this->GetExtraGroup();
     }
 
     inline int getKernelGroupNum() const{
@@ -307,13 +314,14 @@ public:
         assert(kernel>=0 && kernel<this->kN);
         for (uint32_t g=0;g<this->kernelLoc[kernel].size();g++){
             for (uint32_t i=0;i<this->kernelLoc[kernel][g].size()-1;i++)
-                sparseLoc.emplace_back(this->kernelLoc[kernel][g][i]);
+                sparseLoc.emplace_back(this->kernelLoc[kernel][g][i],false);
             sparseLoc.emplace_back(
                     this->kernelLoc
                           [kernel][g]
                           [this->kernelLoc[kernel][g].size()-1].GetLoc(),true
                     );
         }
+        return;
     }
 
     inline void getSparseFeatureGroup(uint32_t g,SFIFO_Data& sparseFeature) const{
@@ -355,6 +363,8 @@ public:
         return this->feature[k][y][x];
     }
 
+    void FillKernel(vector<SparseLocInFIFO>& sparseLoc) const;
+
     #ifndef GENERATE_DATA
     void LoadBias   (const string& prefix = "./");
     #endif // GENERATE_DATA
@@ -374,9 +384,9 @@ public:
     #endif // GENERATE_DATA
 
     #ifdef GENERATE_DATA
-    void Compute(const Layer& lastLayer);
+    void Compute(const Layer& lastLayer,uint32_t& totoalCompute);
     #else
-    bool Compute(const Layer& lastLayer);
+    bool Compute(const Layer& lastLayer,uint32_t& totoalCompute);
     #endif // GENERATE_DATA
 
     void GenReorderSeq();
@@ -397,7 +407,10 @@ public:
 
     inline bool FeatureEqual(int x,int y,int k,XTransIn::FeatureType t) const{
         assert(this->hasLoadFeature);
-        return this->feature[k][y][x]==t;
+        if (this->feature[k][y][x]==t)
+            return true;
+        std::cout<<"should be:"<<this->feature[k][y][x]<<"  actual feature is:"<<t<<std::endl;
+        return false;
     }
 
     inline void SetFeature(int x,int y,int k,XTransIn::FeatureType t){
@@ -475,32 +488,45 @@ private:
     const uint8_t hPadOff;
     const uint8_t wPadOff;
 
+    const bool isInputLayer;
     const bool hasBias;
 
     const uint8_t featureSparse;
     const uint8_t  kernelSparse;
 
+    static int Round_LD(int d,bool isInputLayer){
+        /// round d of a convolutional layer to meet
+        /// the requirement of the architecture
+        d=((d+GROUP_SIZE-1)/GROUP_SIZE)*GROUP_SIZE;
+        if (!isInputLayer)
+            d=((d+KERNEL_GROUP_SIZE-1)/KERNEL_GROUP_SIZE)*KERNEL_GROUP_SIZE;
+        return d;
+    }
+
 public:
     LayerDimension(int h,int w,int d,
+                   bool    isInputLayer = true,
                    enum PAD_TYPE padding = SAME_PAD,
                    uint8_t hPadOff = 0,
                    uint8_t wPadOff = 0,
                    bool    hasBias = true,
                    uint8_t featureSparse = FEATURE_ZERO_PERCENT,
                    uint8_t  kernelSparse = KERNEL_SPARSE_RATE)
-        :h(h),w(w),d((d+GROUP_SIZE-1)/GROUP_SIZE),actD(d),padding(padding),
+        :h(h),w(w),d(LayerDimension::Round_LD(d,isInputLayer)),actD(d),padding(padding),
                hPadOff(hPadOff),
                wPadOff(wPadOff),
+          isInputLayer(isInputLayer),
                hasBias(hasBias),
          featureSparse(featureSparse),
           kernelSparse( kernelSparse){
         assert(this->featureSparse>=0 && this->featureSparse<=100);
         assert(this-> kernelSparse>=0 && this-> kernelSparse<=100);
+        assert(!((actD%GROUP_SIZE!=0) && (actD>GROUP_SIZE)));
         return;
     }
     inline int GetH   () const{return this->h;}
     inline int GetW   () const{return this->w;}
-    inline int GetD   () const{return this->d * GROUP_SIZE;}
+    inline int GetD   () const{return this->d;}
     inline int GetActD() const{return this->actD;}
 
     inline uint8_t GetFS() const{return this->featureSparse;}
@@ -508,6 +534,8 @@ public:
 
     inline uint8_t GetHPadOff() const{return this->hPadOff;}
     inline uint8_t GetWPadOff() const{return this->wPadOff;}
+
+    inline bool IsInput() const{return this->isInputLayer;}
 
     inline bool HasBias() const{return this->hasBias;}
 

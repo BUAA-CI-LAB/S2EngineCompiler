@@ -1,83 +1,334 @@
 #include "../include/SysSim.hpp"
 
-void Systolic::MapToSA(Layer& layer){
+//void Systolic::MapToSA(const Layer& layer){
+//
+//    assert(layer.getType()==CONV_LAYER);
+//    assert(!this->hasMap);
+//
+//    const int lH = layer.getLH(),
+//              lW = layer.getLW();
+//    const int kN = layer.getKN();
+//
+//	int pos[SYS_HEIGHT][2];
+//    /** the position of each PE's     *
+//     *  workload in the output layer **/
+//
+//    const int plateNum = (kN + (SYS_WIDTH * SYS_GROUP) - 1) / (SYS_WIDTH * SYS_GROUP);
+//    /** the workload of each PE for    *
+//     *  the computation of a position **/
+//
+//    int sH = 0;
+//
+//    /// h w: the location used of the position in next layer
+//    for (int w=0;w<lW;w++)
+//        for (int h=0;h<lH;h++){
+//            pos[sH][0] = h;
+//            pos[sH][1] = w;
+//            sH++;
+//            if (sH == SYS_HEIGHT){
+//                /// complete the mapping of the full systolic array
+//                /// _h _w _g: the location used for the systolic array
+//                for (int _h=0;_h<SYS_HEIGHT;_h++){
+//                    int nowKN = 0;
+//                    for (int i=0;i<plateNum;i++){
+//                        #ifdef RELAX_MAPPING_W
+//                        if (i == (plateNum-1)){
+//                            assert(kN > 1);
+//                            int gap = 0;
+//                            for (int _g=0;_g<SYS_GROUP;_g++)
+//                                for (int _w=0;_w<SYS_WIDTH;_w++){
+//                                    if (gap > 0){
+//                                        this->pe[_g][_h][_w].Idle();
+//                                        gap--;
+//                                        continue;
+//                                    }
+//                                    this->pe[_g][_h][_w].Alloc(pos[_h][0],pos[_h][1],nowKN);
+//                                    nowKN ++;
+//                                    assert(!((kN == nowKN) && !((_g == (SYS_GROUP - 1))
+//                                                             && (_w == (SYS_WIDTH - 1)))));
+//                                    if (kN == nowKN){
+//                                        assert(_g == (SYS_GROUP - 1) && _w == (SYS_WIDTH - 1));
+//                                        break;
+//                                    }
+//                                    gap = ((SYS_GROUP*SYS_WIDTH)
+//                                         - (SYS_WIDTH*_g+_w+1)
+//                                         - (kN - nowKN))/// rest idle column number
+//                                          /(kN - nowKN);/// rest interval number
+//                                    if (((SYS_GROUP*SYS_WIDTH)
+//                                       - (SYS_WIDTH*_g+_w+1)
+//                                       - (kN - nowKN))
+//                                        %(kN - nowKN)!=0)
+//                                        gap++;
+//                                }
+//                            assert(nowKN == kN);
+//                            break;
+//                        }
+//                        #endif // RELAX_MAPPING_W
+//                        for (int _g=0;_g<SYS_GROUP;_g++)
+//                            for (int _w=0;_w<SYS_WIDTH;_w++){
+//                                if (nowKN < kN){
+//                                    this->pe[_g][_h][_w].Alloc(pos[_h][0],pos[_h][1],nowKN);
+//                                    nowKN ++;
+//                                }
+//                                else
+//                                    this->pe[_g][_h][_w].Idle();
+//                            }
+//                    }
+//                    assert(nowKN == kN);
+//                    pos[_h][0] = -1;
+//                    pos[_h][1] = -1;
+//                }
+//                sH = 0;
+//            }
+//        }
+//
+//    assert(this->CheckPEHomo());
+//
+//    if (sH!=0){
+//        #ifdef RELAX_MAPPING_H
+//        int hGap = 0;
+//        #endif // RELAX_MAPPING_H
+//        int nowSH = 0;
+//        for (int _h=0;_h<SYS_HEIGHT;_h++){
+//            #ifdef RELAX_MAPPING_H
+//            assert(!(((_h == (SYS_HEIGHT - 1)))&&(nowSH != (sH - 1))));
+//            if (hGap > 0){
+//                for (int _g=0;_g<SYS_GROUP;_g++)
+//                    for (int _w=0;_w<SYS_WIDTH;_w++)
+//                        for (int i=0;i<plateNum;i++)
+//                            this->pe[_g][_h][_w].Idle();
+//                hGap--;
+//                continue;
+//            }
+//            #endif // RELAX_MAPPING_H
+//            int nowKN = 0;
+//            for (int i=0;i<plateNum;i++){
+//                #ifdef RELAX_MAPPING_W
+//                if (i == (plateNum-1)){
+//                    assert(kN > 1);
+//                    int gap = 0;
+//                    for (int _g=0;_g<SYS_GROUP;_g++)
+//                        for (int _w=0;_w<SYS_WIDTH;_w++){
+//                            if (gap > 0){
+//                                this->pe[_g][_h][_w].Idle();
+//                                gap--;
+//                                continue;
+//                            }
+//                            if (nowSH >= sH)
+//                                this->pe[_g][_h][_w].Idle();
+//                            else
+//                                this->pe[_g][_h][_w].Alloc(pos[nowSH][0],pos[nowSH][1],nowKN);
+//                            nowKN ++;
+//                            assert(!((kN == nowKN) && !((_g == (SYS_GROUP - 1))
+//                                                     && (_w == (SYS_WIDTH - 1)))));
+//                            if (kN == nowKN)
+//                                break;
+//                            gap = ((SYS_GROUP*SYS_WIDTH)
+//                                 - (SYS_WIDTH*_g+_w+1)
+//                                 - (kN - nowKN))/// rest idle column number
+//                                  /(kN - nowKN);/// rest interval number
+//                            if (((SYS_GROUP*SYS_WIDTH)
+//                               - (SYS_WIDTH*_g+_w+1)
+//                               - (kN - nowKN))
+//                                %(kN - nowKN)!=0)
+//                                gap++;
+//                        }
+//                    break;
+//                }
+//                #endif // RELAX_MAPPING_W
+//                for (int _g=0;_g<SYS_GROUP;_g++)
+//                    for (int _w=0;_w<SYS_WIDTH;_w++){
+//                        if (nowSH >= sH){
+//                            this->pe[_g][_h][_w].Idle();
+//                            continue;
+//                        }
+//                        if (nowKN < kN){
+//                            this->pe[_g][_h][_w].Alloc(pos[nowSH][0],pos[nowSH][1],nowKN);
+//                            nowKN ++;
+//                        }
+//                        else
+//                            this->pe[_g][_h][_w].Idle();
+//                    }
+//            }
+//            pos[nowSH][0] = -1;
+//            pos[nowSH][1] = -1;
+//            nowSH++;
+//            #ifdef RELAX_MAPPING_H
+//            if (nowSH == sH){
+//                assert(_h == (SYS_HEIGHT - 1));
+//                break;
+//            }
+//            hGap = ((SYS_HEIGHT - (_h+1) - (sH - nowSH)) /// rest idle row number
+//                                          /(sH - nowSH)); /// rest interval number
+//            if ((SYS_HEIGHT - (_h+1) - (sH - nowSH))
+//                                     % (sH - nowSH) != 0)
+//                hGap++;
+//            #endif // RELAX_MAPPING_H
+//        }
+//    }
+//    for (auto& git : this->pe)
+//        for (auto& hit : git)
+//            for (auto& wit : hit)
+//                wit.shrink_to_fit();
+//
+//    assert(this->CheckPEHomo());
+//    #ifdef PRINT_INTERMEDIA_INFO
+//    this->PrintWorkLoad();
+//    this->PrintPE();
+//    #endif // PRINT_INTERMEDIA_INFO
+//    this->hasMap = true;
+//    return;
+//}
 
-    assert(layer.getType()==CONV_LAYER);
-    assert(!this->hasMap);
+void Systolic::MapWorkLoad(const std::vector<std::pair<int,int> >& pos,int kBase,int kN,bool _relaxH,uint32_t workLoadHeight){
+    #ifdef RELAX_MAPPING_W
+    const bool relaxW = (kN - kBase)<(SYS_GROUP * SYS_WIDTH);
+    #else
+    const bool relaxW = false;
+    #endif // RELAX_MAPPING_W
 
-    const int lH = layer.getLH(),
-              lW = layer.getLW();
-    const int kN = layer.getKN();
+    #ifdef RELAX_MAPPING_H
+    const bool relaxH = _relaxH;
+    #else
+    const bool relaxH = false;
+    #endif // RELAX_MAPPING_H
 
-	int pos[SYS_HEIGHT][2];
-    /** the position of each PE's     *
-     *  workload in the output layer **/
-
-    const int plateNum = (kN + (SYS_WIDTH * SYS_GROUP) - 1) / (SYS_WIDTH * SYS_GROUP);
-    /** the workload of each PE for    *
-     *  the computation of a position **/
-
-    int sH = 0;
-    /// h w: the location used of the position in next layer
-    for (int w=0;w<lW;w++)
-        for (int h=0;h<lH;h++){
-            pos[sH][0] = h;
-            pos[sH][1] = w;
-            sH++;
-            if (sH == SYS_HEIGHT){
-                /// complete the mapping of the full systolic array
-                /// _h _w _g: the location used for the systolic array
-                for (int _h=0;_h<SYS_HEIGHT;_h++){
-                    int nowKN = 0;
-                    for (int i=0;i<plateNum;i++)
-                        for (int _g=0;_g<SYS_GROUP;_g++)
-                            for (int _w=0;_w<SYS_WIDTH;_w++){
-                                if (nowKN < kN){
-                                    this->pe[_g][_h][_w].Alloc(pos[_h][0],pos[_h][1],nowKN);
-                                    nowKN ++;
-                                }
-                                else
-                                    this->pe[_g][_h][_w].Idle();
-                            }
-                    pos[_h][0] = -1;
-                    pos[_h][1] = -1;
-                }
-                sH = 0;
-            }
+    assert(pos.size()!=0 && pos.size()<=SYS_HEIGHT);
+    int hGap  = 0;
+    uint32_t nowSH = 0;
+    for (uint32_t h=0;h<SYS_HEIGHT;h++){
+        assert(!( relaxH && (h == (SYS_HEIGHT-1)) && (nowSH != (pos.size()-1)) && workLoadHeight==pos.size() ));
+        assert(!(!relaxH && (h == (SYS_HEIGHT-1)) && (nowSH <  (pos.size()-1))));
+        if (hGap > 0){
+            for (int g=0;g<SYS_GROUP;g++)
+                for (int w=0;w<SYS_WIDTH;w++)
+                    this->pe[g][h][w].Idle();
+            hGap--;
+            continue;
         }
-
-    if (sH!=0){
-        for (int _h=0;_h<SYS_HEIGHT;_h++){
-            int nowKN = 0;
-            for (int i=0;i<plateNum;i++)
-                for (int _g=0;_g<SYS_GROUP;_g++)
-                    for (int _w=0;_w<SYS_WIDTH;_w++){
-                        if (_h >= sH){
-                            this->pe[_g][_h][_w].Idle();
-                            continue;
-                        }
-                        if (nowKN < kN){
-                            this->pe[_g][_h][_w].Alloc(pos[_h][0],pos[_h][1],nowKN);
-                            nowKN ++;
-                        }
-                        else
-                            this->pe[_g][_h][_w].Idle();
-                    }
-            pos[_h][0] = -1;
-            pos[_h][1] = -1;
+        if (!relaxH || workLoadHeight>pos.size())
+            if (nowSH >= pos.size()){
+                for (int g=0;g<SYS_GROUP;g++)
+                    for (int w=0;w<SYS_WIDTH;w++)
+                        this->pe[g][h][w].Idle();
+                continue;
+            }
+        int wGap  = 0;
+        int nowKN = kBase;
+        for (int g=0;g<SYS_GROUP;g++)
+            for (int w=0;w<SYS_WIDTH;w++){
+                if (wGap > 0){
+                    wGap--;
+                    this->pe[g][h][w].Idle();
+                    continue;
+                }
+                if (nowKN >= kN)
+                    this->pe[g][h][w].Idle();
+                else
+                    this->pe[g][h][w].Alloc(pos[nowSH].first,pos[nowSH].second,nowKN);
+                nowKN ++;
+                assert(!( relaxW && (kN == nowKN)
+                                 &&!((g == (SYS_GROUP - 1))
+                                 &&  (w == (SYS_WIDTH - 1)))));
+                if (nowKN == kN && relaxW)
+                    break;
+                if (relaxW){
+                    wGap = ((SYS_GROUP*SYS_WIDTH)
+                          - (SYS_WIDTH*g+w+1)
+                          - (kN - nowKN))/// rest idle column number
+                           /(kN - nowKN);/// rest interval number
+                    if (((SYS_GROUP*SYS_WIDTH)
+                       - (SYS_WIDTH*g+w+1)
+                       - (kN - nowKN))
+                        %(kN - nowKN)!=0)
+                        wGap++;
+                }
+            }
+        nowSH++;
+        if (nowSH == pos.size() && relaxH && workLoadHeight == pos.size()){
+            assert(h==(SYS_HEIGHT-1));
+            break;
+        }
+        if (relaxH){
+            hGap=((SYS_HEIGHT-(h+1)-(workLoadHeight-nowSH))  /// rest idle row number
+                                   /(workLoadHeight-nowSH)); /// rest interval number
+            if   ((SYS_HEIGHT-(h+1)-(workLoadHeight-nowSH))
+                                   %(workLoadHeight-nowSH)!=0)
+                hGap++;
         }
     }
-    for (auto& git : this->pe)
-        for (auto& hit : git)
-            for (auto& wit : hit)
-                wit.shrink_to_fit();
+    assert(nowSH == pos.size());
+    return;
+}
 
-    assert(this->CheckPEHomo());
-    #ifdef PRINT_INTERMEDIA_INFO
-    this->PrintWorkLoad();
-    this->PrintPE();
-    #endif // PRINT_INTERMEDIA_INFO
-    this->hasMap = true;
+void Systolic::MapToSA(int lH,int lW,int kN,int hBegin,int kBase){
+    const int
+        maxcolNum  = SYS_HEIGHT / lH,       /// the maximum number of the entire columns contained in one round
+        totalRound =(lW * lH + SYS_HEIGHT - 1) / SYS_HEIGHT, /// the total rounds
+        interval   = totalRound,            /// the interval of columns with total rounds
+        entireCol  = maxcolNum * totalRound,/// the number of column loaded entirely
+          colNum   = entireCol>=lW ? ((lW + totalRound - 1) / totalRound):maxcolNum;/// actual maximum number of column required for each round
+
+    std::vector<std::pair<int,int> > pos;
+    /** the position of each PE's     *
+     *  workload in the output layer **/
+    pos.reserve(SYS_HEIGHT);
+
+    if (totalRound==1){
+        assert(pos.size()==0);
+        for (int h=0;h<lH;h++)
+            for (int w=0;w<lW;w++)
+                pos.emplace_back(hBegin+h,w);
+        this->MapWorkLoad(pos,kBase,kN,true,pos.size());
+        pos.clear();
+    }
+    else if (colNum==0 || SYS_HEIGHT==lH){
+        assert(SYS_HEIGHT <= lH);
+        for (int w=0;w<lW;w++){
+            for (int h=0;h<SYS_HEIGHT;h++)
+                pos.emplace_back(hBegin+h/*+hBase*/,w);
+            this->MapWorkLoad(pos,kBase,kN,false,pos.size());
+            pos.clear();
+        }
+        if (SYS_HEIGHT == lH)
+            return;
+        this->MapToSA(lH-SYS_HEIGHT,lW,kN,hBegin+SYS_HEIGHT,kBase);
+    }
+    else{
+        assert(SYS_HEIGHT > lH);
+        assert(colNum>0);
+        int nowW = entireCol,
+            nowH = 0;
+        for (int t=0;t<totalRound;t++){
+            if (t < interval)
+                for (int c=0;c<colNum;c++){
+                    const int w = c * interval + t;
+                    if (w < lW)
+                        for (int h=0;h<lH;h++)
+                            pos.emplace_back(hBegin+h,w);
+                    else
+                        break;
+                }
+            assert(pos.size()<=SYS_HEIGHT);
+            if (nowW < lW){
+                /// several convolution in a column need to be split
+                while (pos.size()<SYS_HEIGHT){
+                    /// while systolic array is not filled
+                    if (nowW >= lW)
+                        break;/// all has been added to the systolic array
+                    pos.emplace_back(hBegin+nowH,nowW);
+                    /// calculate the next convolution to be added
+                    nowH++;
+                    if (nowH==lH){
+                        nowH=0;
+                        nowW++;
+                    }
+                }
+            }
+            this->MapWorkLoad(pos,kBase,kN,(entireCol>=lW),lH * colNum);
+            pos.clear();
+        }
+    }
     return;
 }
 
@@ -274,7 +525,7 @@ void Systolic::TransXIn(const Layer& thisLayer,const Layer& lastLayer){
         for (int h=0;h<SYS_HEIGHT;h++){
             #ifdef PRINT_TRANS_X_IN_PROCESS
             cout<<"(g:"<<g<<",h:"<<h<<"): "
-                <<(SA_XIN_TRANS_FILE_PATH_PREFIX+String::NumToString(g)+"_"+String::NumToString(h)+TRANS_FILE_TYPE)
+                <<(SA_XIN_TRANS_FILE_PATH_PREFIX+std::to_string(g)+"_"+std::to_string(h)+TRANS_FILE_TYPE)
                 <<endl;
             #endif // PRINT_TRANS_X_IN_PROCESS
 
@@ -479,6 +730,9 @@ bool Systolic::CheckPEHomo() const{
         for (int h=0;h<SYS_HEIGHT;h++)
             for (int w=0;w<SYS_WIDTH;w++)
                 if (this->pe[g][h][w].GetWorkLoad() != workLoad){
+                    std::cout<<" PE@("<<g<<","<<h<<","<<w<<") has the different workload("
+                             <<this->pe[g][h][w].GetWorkLoad()
+                             <<") with (0,0,0)("<<workLoad<<")"<<std::endl;
                     return false;
                 }
     return true;
@@ -558,6 +812,33 @@ bool Systolic::CheckXW(Layer& thisLayer) const{
     assert(this->wHasTra
         && this->xHasTra
         && this->oHasGen);
+    vector<vector<vector<bool> > > mark(thisLayer.getKN(),vector<vector<bool> >
+                                       (thisLayer.getLH(),vector<bool>
+                                       (thisLayer.getLW(),false)));
+    for (const auto& git : this->XOut)
+        for (const auto& wit : git)
+            for (uint32_t i=0;i<wit.GetWorkLoad();i++){
+                if (wit.IfIdle(i))
+                    continue;
+                if (mark[wit.GetK(i)][wit.GetY(i)][wit.GetX(i)]){
+                    std::cout<<"work load mapping overlapped! k:"<<wit.GetK(i)
+                                                          <<" y:"<<wit.GetY(i)
+                                                          <<" x:"<<wit.GetX(i)
+                                                          <<std::endl;
+                    return false;
+                }
+                mark[wit.GetK(i)][wit.GetY(i)][wit.GetX(i)] = true;
+            }
+//    for (const auto& nit : mark)
+//        for (const auto& hit : nit)
+//            for (const auto& wit : hit)
+    for (int k=0;k<thisLayer.getKN();k++)
+        for (int lh=0;lh<thisLayer.getLH();lh++)
+            for (int lw=0;lw<thisLayer.getLW();lw++)
+                if (!mark[k][lh][lw]){
+                    std::cout<<"work load mapping incomplete (kn:"<<k<<",h:"<<lh<<",w:"<<lw<<"):"<<std::endl;
+                    return false;
+                }
     #ifndef REFORMED
     uint32_t lastSite[SYS_HEIGHT];
     for (int g=0;g<SYS_GROUP;g++)
@@ -572,8 +853,8 @@ bool Systolic::CheckXW(Layer& thisLayer) const{
                     assert(this->XTran[g][h].size()==this->WTran[g][w].size());
                     XTransIn::FeatureType t = 0;
                     while (lastSite[h]<this->WTran[g][w].size()){
-                        t +=  this->XTran[g][h][lastSite[h]].GetValue()
-                            * this->WTran[g][w][lastSite[h]].GetW();
+                        t+= this->XTran[g][h][lastSite[h]].GetValue()
+                          * this->WTran[g][w][lastSite[h]].GetW();
                         if (this->WTran[g][w][lastSite[h]].IfEOK()){
                             lastSite[h]++;
                             break;
@@ -807,7 +1088,7 @@ void Systolic::GetDownDataSize(const Layer& thisLayer,int& dataSize,int& reluSiz
     return;
 }
 
-int Systolic::GetUpCacheSize() const{
+int Systolic::GetUpSparseCacheSize() const{
     assert(this->hasAnal);
     int workLoad = this->cacheData[0][0].size();
     int maxCacheData = 0;
@@ -816,6 +1097,22 @@ int Systolic::GetUpCacheSize() const{
         for (int g=0;g<SYS_GROUP;g++)
             for (int w=0;w<SYS_WIDTH;w++)
                 nowSize += this->cacheData[g][w][i];
+        maxCacheData =
+        maxCacheData>nowSize?
+        maxCacheData:nowSize;
+    }
+    return maxCacheData;
+}
+
+int Systolic::GetUpDenseCacheSize() const{
+    assert(this->hasAnal);
+    int workLoad = this->cacheDenseData[0][0].size();
+    int maxCacheData = 0;
+    for (int i=0;i<workLoad;i++){
+        int nowSize = 0;
+        for (int g=0;g<SYS_GROUP;g++)
+            for (int w=0;w<SYS_WIDTH;w++)
+                nowSize += this->cacheDenseData[g][w][i];
         maxCacheData =
         maxCacheData>nowSize?
         maxCacheData:nowSize;
@@ -840,7 +1137,7 @@ int Systolic::GetLeftDataSize() const{
     return leftDataSize;
 }
 
-void Systolic::AnalyzeInputData(const Layer& thisLayer){
+void Systolic::AnalyzeWIn(const Layer& thisLayer){
     assert(this->wHasGen
        && !this->hasAnal);
     this->upDataSize = 0;
@@ -852,17 +1149,22 @@ void Systolic::AnalyzeInputData(const Layer& thisLayer){
             /** memory management, the amount of data will be
              ** used in the beginning of the workload
              ** count in bit**/
+            vector<int> mmDense(workLoad,0);
             vector<bool> lastUse(kerneNum,false),
-                         firstLoad(kerneNum,false);
+                       firstLoad(kerneNum,false);
             this->cacheData[g][w].clear();
             this->cacheData[g][w].resize(workLoad);
+            this->cacheDenseData[g][w].clear();
+            this->cacheDenseData[g][w].resize(workLoad);
             for (int i=workLoad-1;i>=0;i--){
                 if (this->WIn[g][w].GetIdx(i)==IDLE)
                     continue;
                 if (!lastUse[this->WIn[g][w].GetIdx(i)]){
                      lastUse[this->WIn[g][w].GetIdx(i)]=true;
-                     if (i<workLoad-1)
-                        mm[i+1]-=thisLayer.getKernelWorkLoad(this->WIn[g][w].GetIdx(i));
+                     if (i<workLoad-1){
+                        mm     [i+1]-=thisLayer.getKernelWorkLoad(this->WIn[g][w].GetIdx(i));
+                        mmDense[i+1]-=thisLayer.getKernelSize();
+                     }
                 }
             }
             for (int i=0;i<workLoad;i++){
@@ -870,19 +1172,24 @@ void Systolic::AnalyzeInputData(const Layer& thisLayer){
                     continue;
                 if (!firstLoad[this->WIn[g][w].GetIdx(i)]){
                      firstLoad[this->WIn[g][w].GetIdx(i)]=true;
-                     this->upDataSize+=thisLayer.getKernelWorkLoad(this->WIn[g][w].GetIdx(i));
-                     mm[i]+=thisLayer.getKernelWorkLoad(this->WIn[g][w].GetIdx(i));
+                    this->upDataSize
+                         +=thisLayer.getKernelWorkLoad(this->WIn[g][w].GetIdx(i));
+                    mm[i]+=thisLayer.getKernelWorkLoad(this->WIn[g][w].GetIdx(i));
+                    mmDense[i+1]+=thisLayer.getKernelSize();
                 }
             }
-
             this->cacheData[g][w][0]
-                 = mm[0] * WEIGHT_BIT_WIDTH;
-            for (int i=1;i<workLoad;i++)
-                this->cacheData[g][w][i]
-              = this->cacheData[g][w][i-1]
-               +mm[i] * WEIGHT_BIT_WIDTH;
+                 = mm[0] * (WTransIn::bitwidth + SparseDataInFIFO<WTransIn>::extraBitwidth);
+            this->cacheDenseData[g][w][0]
+                 = mmDense[0] * (WEIGHT_BIT_WIDTH + EOW_BIT_WIDTH);
+            for (int i=1;i<workLoad;i++){
+                this->cacheData[g][w][ i ] = this->cacheData[g][w][i-1]
+                    + mm[i] * (WTransIn::bitwidth + SparseDataInFIFO<WTransIn>::extraBitwidth);
+                this->cacheDenseData[g][w][ i ] = this->cacheDenseData[g][w][i-1]
+                    + mmDense[i] * (WEIGHT_BIT_WIDTH + EOW_BIT_WIDTH);
+            }
         }
-    this->upDataSize *= WEIGHT_BIT_WIDTH;
+    this->upDataSize *= WTransIn::bitwidth + SparseDataInFIFO<WTransIn>::extraBitwidth;
     this->hasAnal = true;
     return;
 }

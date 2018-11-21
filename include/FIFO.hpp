@@ -40,11 +40,11 @@ public:
         return;
     }
     inline enum FIFO_CTRL GetCtrl(uint32_t idx) const{
-        assert(idx>=0 && idx<this->data.size() && !this->hasSorted);
+        assert(idx<this->data.size() && !this->hasSorted);
         return this->data[idx].GetCtrl();
     }
     inline const T& GetFeature(uint32_t idx) const{
-        assert(idx>=0 && idx<this->data.size());
+        assert(idx<this->data.size());
         return this->data[idx].GetFeature();
     }
     inline bool IsEnd(uint32_t idx) const{
@@ -61,7 +61,7 @@ public:
         return ctrlNum;
     }
     inline bool IfCtrl(uint32_t idx) const{
-        assert(idx>=0 && idx<this->data.size());
+        assert(idx<this->data.size());
         return this->data[idx].IsCtrl();
     }
     inline void AddCtrl(enum FIFO_CTRL ctrl){
@@ -105,6 +105,17 @@ public:
     #endif // NDEBUG
 
     inline void Sort(){
+        for (uint32_t i=0;i<this->isZeroGroup.size();i++)
+            if (this->isZeroGroup[i]){
+                this->isZeroGroup.erase(this->isZeroGroup.begin()+i);
+                this->data.erase(this->data.begin()+i);
+                i--;
+            }
+        int ctrlNum = 0;
+        for (const auto& dit : this->data){
+            if (dit.IsCtrl())
+                ctrlNum++;
+        }
         #ifndef NDEBUG
         this->hasSorted = true;
         #endif // NDEBUG
@@ -115,8 +126,7 @@ public:
                -> bool {return a.GetKey()>b.GetKey();});
         for (auto it = this->data.cbegin(); it != this->data.cend();it++)
             if (it->IsCtrl()){
-                assert((it - this->data.cbegin())>0);
-                this->groupNum = it - this->data.cbegin() - 1;
+                this->groupNum = it - this->data.cbegin();
                 break;
             }
         #ifndef NDEBUG
@@ -133,6 +143,9 @@ public:
     }
     inline void AddCtrl(enum FIFO_CTRL ctrl){
         assert(!this->hasSorted);
+        #ifdef STRAIGHT_OUT
+        assert(ctrl == RAB || ctrl == BZ);
+        #endif // STRAIGHT_OUT
         this->isZeroGroup.push_back(false);
         SFIFO::AddCtrl(ctrl);
         return;
@@ -145,7 +158,7 @@ public:
     }
 
     inline bool IsZeroGroup(uint32_t idx) const{
-        assert(idx>=0 && idx<this->data.size());
+        assert(idx<this->data.size());
         return this->isZeroGroup[idx];
     }
 
@@ -153,8 +166,9 @@ public:
         assert(this->groupNumHasCalced
             && this->isZeroGroup.size() == this->data.size()
             && this->data.size() > this->groupNum
-            &&!this->data[this->groupNum  ].IsCtrl()
-            && this->data[this->groupNum+1].IsCtrl());
+            &&(this->groupNum == 0
+            ||(this->data[this->groupNum  ].IsCtrl()
+            &&!this->data[this->groupNum-1].IsCtrl())));
         return this->groupNum;
     }
 
@@ -196,22 +210,25 @@ public:
 
 class SFIFO_Data : public SFIFO<const SparseDataInFIFO<XTransIn::FeatureType> >{
 public:
+//    static constexpr uint8_t
+//        BitWidth =  WEIGHT_BIT_WIDTH
+//                   +   LOC_BIT_WIDTH
+//                   +   EOG_BIT_WIDTH
+//                   + 1;/// extra mark to distinguish CTRL and DATA
+
     static constexpr uint8_t
-        BitWidth =  WEIGHT_BIT_WIDTH
-                   +   LOC_BIT_WIDTH
-                   +   EOG_BIT_WIDTH
-                   + 1;/// extra mark to distinguish CTRL and DATA
+        bitwidth = XTransIn::bitwidth + SparseDataInFIFO<XTransIn::FeatureType>::extraBitwidth;
 
     inline const XTransIn::FeatureType& GetValue(uint32_t idx) const{
-        assert(idx>=0 && idx<this->data.size() && !this->hasSorted);
+        assert(idx<this->data.size() && !this->hasSorted);
         return this->data[idx].GetFeature().GetValue();
     }
     inline int GetLoc(uint32_t idx) const{
-        assert(idx>=0 && idx<this->data.size() && !this->hasSorted);
+        assert(idx<this->data.size() && !this->hasSorted);
         return this->data[idx].GetFeature().GetLoc();
     }
     inline bool IsEOG(uint32_t idx) const{
-        assert(idx>=0 && idx<this->data.size() && !this->hasSorted);
+        assert(idx<this->data.size() && !this->hasSorted);
         return this->data[idx].GetFeature().IsEOG();
     }
     inline void AddZeroFeatureGroup(){
@@ -221,6 +238,14 @@ public:
     inline void AddFeature(const SparseData<XTransIn::FeatureType>& feature,bool EOG){
         this->data.emplace_back(SparseDataInFIFO<XTransIn::FeatureType>(feature,EOG));
         return;
+    }
+    inline uint64_t GetTotalSize() const{
+        #ifndef MIXED_PRECISION
+        return this->data.size() - this->GetCtrlNum();
+        #else
+        ///assert(false); to do: improve this for 16-bit data
+        return this->data.size() - this->GetCtrlNum();
+        #endif // MIXED_PRECISION
     }
     inline void PrintHFTo(std::ofstream& ofs) const {
         assert(!(!ofs) && !this->hasSorted);
@@ -287,6 +312,25 @@ private:
     std::vector<DataInDFIFO> dataList;
 
 public:
+    inline void Sort(){
+        for(auto it=this->dataList.begin();it!=this->dataList.end();){
+            if(it->IfIdle())
+                it=this->dataList.erase(it);
+            else
+                ++it;
+        }
+        std::sort(this->dataList.begin(),this->dataList.end(),
+               [](const DataInDFIFO& a,
+                  const DataInDFIFO& b)
+               -> bool {
+                    if (a.GetK()!=b.GetK())
+                        return a.GetK()>b.GetK();
+                    if (a.GetY()!=b.GetY())
+                        return a.GetY()>b.GetY();
+                    return a.GetX()>b.GetX();
+                });
+        return;
+    }
     inline void AddInputW(int idx){
         this->dataList.emplace_back(idx,W_FIFO_DATA);
         return;
@@ -322,22 +366,27 @@ public:
     inline void AddAny(){
         this->dataList.emplace_back(RAND_FIFO_DATA);
     }
-    inline int GetIdx(int idx) const{
+    inline int GetIdx(uint32_t idx) const{
+        assert(idx <this->dataList.size());
         return this->dataList[idx].GetIdx();
     }
-    inline int GetX(int idx)   const{
+    inline int GetX(uint32_t idx)   const{
+        assert(idx <this->dataList.size());
         return this->dataList[idx].GetX();
     }
-    inline int GetY(int idx)   const{
+    inline int GetY(uint32_t idx)   const{
+        assert(idx <this->dataList.size());
         return this->dataList[idx].GetY();
     }
-    inline int GetK(int idx)   const{
+    inline int GetK(uint32_t idx)   const{
+        assert(idx <this->dataList.size());
         return this->dataList[idx].GetK();
     }
     inline uint32_t GetWorkLoad()   const{
         return this->dataList.size();
     }
-    inline bool IfIdle(int idx)const{
+    inline bool IfIdle(uint32_t idx)const{
+        assert(idx <this->dataList.size());
         return this->dataList[idx].IfIdle();
     }
     inline void reserve(int _size){
