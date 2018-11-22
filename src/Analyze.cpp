@@ -1072,7 +1072,7 @@ void Analyze::AnalyzeResNet50(std::string path){
     this->MKLayerDir(path,"conv_51");
     this->MKLayerDir(path,"conv_52");
 
-
+/*
     ///Conv2d(3, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
     std::cout<<"##############"<<std::endl
              <<"##  conv_0  ##"<<std::endl
@@ -1144,7 +1144,7 @@ void Analyze::AnalyzeResNet50(std::string path){
     WorkLoad += layer6o.GetWorkLoad(layer6i,3,3);
 
     ///Conv2d(64, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
-    std::cout<<"##############"<<std::endl
+    std::cout<<"##############"<layer45<std::endl
              <<"##  conv_7  ##"<<std::endl
              <<"##############"<<std::endl
              <<layer7i.toString()<<"->"<<layer7o.toString()<<"\n"<<endl;
@@ -1177,7 +1177,7 @@ void Analyze::AnalyzeResNet50(std::string path){
     std::cout<<"##############"<<std::endl
              <<"##  conv_10 ##"<<std::endl
              <<"##############"<<std::endl
-             <<layer10i.toString()<<"->"<<layer10o.toString()<<"\n"<<endl;
+             <<layer10i.toStringlayer45()<<"->"<<layer10o.toString()<<"\n"<<endl;
     analyze(layer10i,layer10o,1,1,1,1,path+"./conv_10/",totalSAWInSize,
                                                         totalSAXInSize,
                                                         totalCEXInSize,ofs);
@@ -1402,7 +1402,7 @@ void Analyze::AnalyzeResNet50(std::string path){
                                                         totalSAXInSize,
                                                         totalCEXInSize,ofs);
     WorkLoad += layer32o.GetWorkLoad(layer32i,3,3);
-
+*/
     ///Conv2d(256, 1024, kernel_size=(1, 1), stride=(1, 1), bias=False)
     std::cout<<"##############"<<std::endl
              <<"##  conv_33 ##"<<std::endl
@@ -1412,7 +1412,7 @@ void Analyze::AnalyzeResNet50(std::string path){
                                                         totalSAXInSize,
                                                         totalCEXInSize,ofs);
     WorkLoad += layer33o.GetWorkLoad(layer33i,1,1);
-
+/*
     ///Conv2d(1024, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
     std::cout<<"##############"<<std::endl
              <<"##  conv_34 ##"<<std::endl
@@ -1602,7 +1602,7 @@ void Analyze::AnalyzeResNet50(std::string path){
                                                         totalSAXInSize,
                                                         totalCEXInSize,ofs);
     WorkLoad += layer52o.GetWorkLoad(layer52i,1,1);
-
+*/
     std::cout<<"total workload: "<<WorkLoad<<std::endl;
     std::cout<<"totalSAWIn size: "<<totalSAWInSize<<std::endl;
     std::cout<<"totalSAXIn size: "<<totalSAXInSize<<std::endl;
@@ -1641,7 +1641,7 @@ void Analyze::GenKernel(int kN,int kH,int kW,int kD,int zeroRatio,int _16bitRati
                               && ( i == (GROUP_SIZE - 1)))
                             pattern[idx] = true;
                         else
-                            pattern[idx] = ((rand()%100)>=zeroRatio);
+                            pattern[idx] = ((rand()%1000)>=zeroRatio);
                         pOfs << pattern[idx];
                         idx++;
                     }
@@ -1651,7 +1651,7 @@ void Analyze::GenKernel(int kN,int kH,int kW,int kD,int zeroRatio,int _16bitRati
                 int tempValue;
                 int additionalValue;
                 if (it && ((k + g * KERNEL_GROUP_SIZE) < kN)){
-                    if ((rand()%100)<_16bitRatio){///16-bit
+                    if ((rand()%1000)<_16bitRatio){///16-bit
                         #ifndef AVOID_OVERFLOW
                         tempValue = (1<<(2*WEIGHT_BIT_WIDTH-1));
                         #else
@@ -1689,8 +1689,8 @@ void Analyze::GenFeature(int h,int w,int t,int zeroRatio,int _16bitRatio,const s
             for (int k=0;k<w;k++){
                 int tempValue;/// is used to generate different precision of value
                 int additionalValue;
-                if (i<t && rand()%100>=zeroRatio){
-                    if ((rand()%100)<_16bitRatio){///16-bit
+                if (i<t && rand()%1000>=zeroRatio){
+                    if ((rand()%1000)<_16bitRatio){///16-bit
                         #ifndef AVOID_OVERFLOW
                         tempValue = (1<<(2*WEIGHT_BIT_WIDTH-1));
                         #else

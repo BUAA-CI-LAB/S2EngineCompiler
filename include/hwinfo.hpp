@@ -79,11 +79,11 @@
 /// equivalent to ban the CE array
 
 /// for network sparsity
-#define KERNEL_SPARSE_RATE   0
-#define FEATURE_ZERO_PERCENT 0
+#define KERNEL_SPARSE_RATE   0 ///  1/1000
+#define FEATURE_ZERO_PERCENT 0 ///  1/1000
 
 /// for value precision
-#define KERNEL_16_BIT_RATE 0     ///  KERNEL_16_BIT_RATE%    of the non-zero weight     is 16 bit
-#define FEATURE_16_BIT_PERCENT 0 /// FEATURE_16_BIT_PERCENT% of the non-zero activation is 16 bit
+#define KERNEL_16_BIT_RATE 0     ///  KERNEL_16_BIT_RATE    1/1000 of the non-zero weight     is 16 bit
+#define FEATURE_16_BIT_PERCENT 0 /// FEATURE_16_BIT_PERCENT 1/1000 of the non-zero activation is 16 bit
 
 #endif // HDINFO_HPP

@@ -8,14 +8,14 @@
 
 using namespace std;
 
-#define TEST
+//#define TEST
 
 #ifdef TEST
 int main(){
-//    Analyze().AnalyzeResNet50("./ResNet50/n02092339_2913.JPEG/");
+    Analyze().AnalyzeResNet50("./ResNet50/n02092339_2913.JPEG/");
 //    Analyze().AnalyzeAlexNet("./AlexNet/n03481172.jpg/");
 //    Analyze().AnalyzeAlexNet("./AlexNet/n02783161_4946.JPEG/");
-    Analyze().AnalyzeVGG16  ("./VGG16/n02841315_7661.JPEG/");
+//    Analyze().AnalyzeVGG16  ("./VGG16/n02841315_7661.JPEG/");
 //    Analyze().AnalyzeResNet18("./ResNet18/n01751748_11712.JPEG/");
     return 0;
 }
