@@ -1,4 +1,4 @@
-# S2EngineCompiler
+#  S2EngineCompiler
 
 compiler for S2Engine , a novel systolic architecture that can fully exploit the sparsity in CNNs with maximized data reuse.
 
