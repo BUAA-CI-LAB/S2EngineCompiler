@@ -772,3 +772,4 @@ void RUArray::AnalyzeXIn(const Layer& lastLayer){
     this->hasAnal = true;
     return;
 }
+ 

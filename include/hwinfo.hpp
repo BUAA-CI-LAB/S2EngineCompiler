@@ -87,3 +87,4 @@
 #define FEATURE_16_BIT_PERCENT 0 /// FEATURE_16_BIT_PERCENT 1/1000 of the non-zero activation is 16 bit
 
 #endif // HDINFO_HPP
+ 
