@@ -51,6 +51,7 @@
 		<Unit filename="src/SysSim.cpp" />
 		<Unit filename="src/main.cpp" />
 		<Unit filename="src/net.cpp" />
+		<Unit filename="src/net2.cpp" />
 		<Extensions>
 			<code_completion />
 			<envvars />

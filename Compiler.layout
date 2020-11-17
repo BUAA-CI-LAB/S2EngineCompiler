@@ -94,7 +94,7 @@
 	</File>
 	<File name="src\Memory.cpp" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="3" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="96" topLine="0" />
+			<Cursor1 position="96" topLine="0"  />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>
